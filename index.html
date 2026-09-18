@@ -1,11 +1,3195 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url='tock-torvaianica%204.0.html'">
-<title>Tock Torvaianica</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Tock</title>
+<style>
+:root {
+  --ink: #3a2b22;
+  --cream: #f7eeda;
+  --panel: #f3e6c9;
+  --panel-border: #e0c98f;
+  --gold: #d9b65c;
+  --gold-deep: #b8912f;
+  --red: #ff2d55;
+  --green: #00e68a;
+  --yellow: #ffd500;
+  --blue: #00b0ff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #3a2b1c;
+  background: radial-gradient(circle at 50% 0%, #4a3624, #2c2015);
+  color: var(--ink);
+}
+
+#app { max-width: 480px; margin: 0 auto; padding: 12px; min-height: 100vh; }
+
+h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--ink); }
+.muted { color: #7a6a55; font-size: 0.9rem; }
+
+.lobby-card, .start-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+#room-input, #name-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  margin: 8px 0;
+  background: #fffaf0;
+}
+#room-input { text-transform: uppercase; }
+
+.color-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+
+.color-btn {
+  padding: 14px;
+  border-radius: 10px;
+  border: 3px solid transparent;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+}
+.color-red { background: var(--red); }
+.color-green { background: var(--green); }
+.color-yellow { background: var(--yellow); color: var(--ink); }
+.color-blue { background: var(--blue); }
+.color-btn.selected { border-color: var(--ink); transform: scale(0.97); }
+
+button.primary {
+  width: 100%;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(180deg, #4a3624, var(--ink));
+  color: var(--cream);
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  cursor: pointer;
+}
+button.secondary {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--ink);
+  background: #fffaf0;
+  margin: 4px;
+  cursor: pointer;
+}
+button.danger {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #c0392b;
+  color: white;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #d8c9a8;
+  margin-bottom: 8px;
+}
+
+#board-wrap { margin-bottom: 10px; }
+
+.turn-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+.turn-line.my-turn {
+  border: 2px solid var(--gold);
+  animation: turnGlow 1.6s ease-in-out infinite;
+}
+@keyframes turnGlow {
+  0%, 100% { box-shadow: 0 0 4px 0 rgba(217,182,92,0.5); }
+  50% { box-shadow: 0 0 16px 4px rgba(217,182,92,0.85); }
+}
+
+.swatch { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.swatch-red { background: var(--red); }
+.swatch-green { background: var(--green); }
+.swatch-yellow { background: var(--yellow); }
+.swatch-blue { background: var(--blue); }
+.you-badge { color: #7a6a55; font-weight: 400; }
+
+.status-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.status-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border: 2px solid var(--panel-border);
+}
+.status-chip-active { border-color: var(--gold); background: #fff3d6; }
+.status-name { font-weight: 600; }
+.mini-pawns { width: 62px; height: 14px; flex-shrink: 0; }
+
+.hand-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.card-btn {
+  min-width: 54px;
+  width: 54px;
+  height: 76px;
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid #b9ac89;
+  background: linear-gradient(180deg, #fffefb, #f8f0dc);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.7);
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-btn.suit-red { color: #c81e3f; }
+.card-btn.suit-black { color: #16110c; }
+.card-btn:disabled { opacity: 0.4; cursor: default; }
+.card-btn.selected { background: var(--gold); }
+
+.card-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 0.9;
+}
+.card-corner-tl { top: 4px; left: 4px; }
+.card-corner-br { bottom: 4px; right: 4px; transform: rotate(180deg); }
+
+.choice-box {
+  width: 100%;
+  background: #fff3d6;
+  border: 2px dashed var(--gold);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 6px;
+}
+
+button.secondary.selected {
+  background: var(--gold);
+  border-color: var(--ink);
+}
+
+.seven-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.seven-val {
+  min-width: 22px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.teams-hint {
+  margin-top: -6px;
+  margin-bottom: 12px;
+}
+
+.burn-hint {
+  width: 100%;
+  background: #fdeceb;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 0.9rem;
+}
+
+.log-box {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.log-line { padding: 3px 0; border-bottom: 1px solid rgba(58,43,34,0.08); color: #55483a; display: flex; align-items: flex-start; gap: 6px; }
+.log-line:last-child { border-bottom: none; }
+.log-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+
+.chat-box {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.chat-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.chat-unread {
+  background: var(--red);
+  color: white;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  padding: 1px 7px;
+  font-weight: 700;
+}
+.chat-messages {
+  max-height: 140px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+.chat-line { padding: 3px 0; font-size: 0.88rem; display: flex; align-items: center; flex-wrap: wrap; }
+.chat-input-row { display: flex; gap: 6px; }
+.chat-input-row input {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid var(--panel-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fffaf0;
+}
+.chat-input-row button.secondary {
+  background: var(--gold);
+  border-color: var(--gold-deep);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.win-banner {
+  background: linear-gradient(180deg, #f0d98c, var(--gold));
+  color: var(--ink);
+  text-align: center;
+  padding: 22px 14px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  font-weight: 700;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  animation: winPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.win-trophy { font-size: 2.6rem; line-height: 1; margin-bottom: 4px; }
+.win-banner h2 { margin: 0 0 4px; font-size: 1.3rem; }
+.win-names { margin: 0; font-size: 0.95rem; opacity: 0.85; }
+@keyframes winPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5000;
+}
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  animation-name: confettiFall;
+  animation-timing-function: cubic-bezier(0.35, 0, 0.65, 1);
+  animation-fill-mode: forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translate(0, 0) rotate(var(--rot0)); opacity: 1; }
+  100% { transform: translate(var(--drift), 110vh) rotate(calc(var(--rot0) + 540deg)); opacity: 0.9; }
+}
+
+.board-cell { cursor: default; }
+
+.conn-lost {
+  background: #c0392b;
+  color: white;
+  text-align: center;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.a2hs-hint {
+  margin-top: 14px;
+  background: #fff3d6;
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  justify-content: space-between;
+}
+.a2hs-close {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #7a6a55;
+  flex-shrink: 0;
+}
+
+</style>
 </head>
 <body>
-<p>Caricamento del gioco...</p>
+<div id="app"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+// Configurazione del progetto Firebase "ttok-21ebe".
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA78jHHQukTeWhfutHPdhfVYu611iP_BQQ",
+  authDomain: "ttok-21ebe.firebaseapp.com",
+  databaseURL: "https://ttok-21ebe-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ttok-21ebe",
+  storageBucket: "ttok-21ebe.firebasestorage.app",
+  messagingSenderId: "608353375053",
+  appId: "1:608353375053:web:346f8e4589b4d2c631dd04",
+};
+
+
+</script>
+<script>
+// Geometria del tabellone (generata dal design validato 47,2x47,2cm)
+const BOARD = {
+ "boardSizeMm": 472.0,
+ "pitchMm": 42.0,
+ "cellRadiusMm": 16.0,
+ "loopCells": [
+  {
+   "x": 26.0,
+   "y": 26.0,
+   "isBase": true,
+   "baseColor": "red",
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 68.0,
+   "y": 26.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 110.0,
+   "y": 26.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 152.0,
+   "y": 26.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 194.0,
+   "y": 26.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 194.0,
+   "y": 68.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 194.0,
+   "y": 110.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 194.0,
+   "y": 152.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 236.0,
+   "y": 152.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 278.0,
+   "y": 152.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 278.0,
+   "y": 110.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 278.0,
+   "y": 68.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 278.0,
+   "y": 26.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": true,
+   "markerColor": "green"
+  },
+  {
+   "x": 320.0,
+   "y": 26.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 362.0,
+   "y": 26.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 404.0,
+   "y": 26.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 26.0,
+   "isBase": true,
+   "baseColor": "green",
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 68.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 110.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 152.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 194.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 404.0,
+   "y": 194.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 362.0,
+   "y": 194.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 320.0,
+   "y": 194.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 320.0,
+   "y": 236.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 320.0,
+   "y": 278.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 362.0,
+   "y": 278.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 404.0,
+   "y": 278.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 278.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": true,
+   "markerColor": "yellow"
+  },
+  {
+   "x": 446.0,
+   "y": 320.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 362.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 404.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 446.0,
+   "y": 446.0,
+   "isBase": true,
+   "baseColor": "yellow",
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 404.0,
+   "y": 446.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 362.0,
+   "y": 446.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 320.0,
+   "y": 446.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 278.0,
+   "y": 446.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 278.0,
+   "y": 404.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 278.0,
+   "y": 362.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 278.0,
+   "y": 320.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 236.0,
+   "y": 320.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 194.0,
+   "y": 320.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 194.0,
+   "y": 362.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 194.0,
+   "y": 404.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 194.0,
+   "y": 446.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": true,
+   "markerColor": "blue"
+  },
+  {
+   "x": 152.0,
+   "y": 446.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 110.0,
+   "y": 446.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 68.0,
+   "y": 446.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 26.0,
+   "y": 446.0,
+   "isBase": true,
+   "baseColor": "blue",
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 26.0,
+   "y": 404.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 26.0,
+   "y": 362.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 26.0,
+   "y": 320.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 26.0,
+   "y": 278.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 68.0,
+   "y": 278.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 110.0,
+   "y": 278.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 152.0,
+   "y": 278.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 152.0,
+   "y": 236.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 152.0,
+   "y": 194.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 110.0,
+   "y": 194.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 68.0,
+   "y": 194.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 26.0,
+   "y": 194.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": true,
+   "markerColor": "red"
+  },
+  {
+   "x": 26.0,
+   "y": 152.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 26.0,
+   "y": 110.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  },
+  {
+   "x": 26.0,
+   "y": 68.0,
+   "isBase": false,
+   "baseColor": null,
+   "isMarker": false,
+   "markerColor": null
+  }
+ ],
+ "baseIndex": {
+  "red": 0,
+  "green": 16,
+  "yellow": 32,
+  "blue": 48
+ },
+ "homePaths": {
+  "red": [
+   {
+    "x": 65.59797968000001,
+    "y": 65.59797968000001
+   },
+   {
+    "x": 95.29646444,
+    "y": 95.29646444
+   },
+   {
+    "x": 124.99494920000001,
+    "y": 124.99494920000001
+   },
+   {
+    "x": 154.69343396,
+    "y": 154.69343396
+   }
+  ],
+  "green": [
+   {
+    "x": 406.40202032,
+    "y": 65.59797968000001
+   },
+   {
+    "x": 376.70353556,
+    "y": 95.29646444
+   },
+   {
+    "x": 347.0050508,
+    "y": 124.99494920000001
+   },
+   {
+    "x": 317.30656604,
+    "y": 154.69343396
+   }
+  ],
+  "yellow": [
+   {
+    "x": 406.40202032,
+    "y": 406.40202032
+   },
+   {
+    "x": 376.70353556,
+    "y": 376.70353556
+   },
+   {
+    "x": 347.0050508,
+    "y": 347.0050508
+   },
+   {
+    "x": 317.30656604,
+    "y": 317.30656604
+   }
+  ],
+  "blue": [
+   {
+    "x": 65.59797968000001,
+    "y": 406.40202032
+   },
+   {
+    "x": 95.29646444000002,
+    "y": 376.70353556
+   },
+   {
+    "x": 124.99494920000002,
+    "y": 347.0050508
+   },
+   {
+    "x": 154.69343396,
+    "y": 317.30656604
+   }
+  ]
+ },
+ "order": [
+  "red",
+  "green",
+  "yellow",
+  "blue"
+ ]
+};
+
+</script>
+<script>
+// ============================================================
+// Tock Torvaianica — motore di gioco
+// ============================================================
+
+const COLORS = ["red", "green", "yellow", "blue"];
+const TEAM_OF = { red: "A", yellow: "A", green: "B", blue: "B" };
+const TEAM_LABEL = { A: "Rosso + Giallo", B: "Verde + Blu" };
+const PARTNER_OF = { red: "yellow", yellow: "red", green: "blue", blue: "green" };
+const NEXT_COLOR = { red: "green", green: "yellow", yellow: "blue", blue: "red" };
+
+function buildDeck() {
+  const suits = ["hearts", "diamonds", "clubs", "spades"];
+  const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+  const deck = [];
+  for (const s of suits) for (const r of ranks) deck.push(r + "-" + s);
+  return deck;
+}
+
+function shuffle(arr, rng) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor((rng ? rng() : Math.random()) * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function rankOf(card) { return card.split("-")[0]; }
+
+// Numeric movement value of a card for THIS player's current situation.
+// Returns null for cards that are entry-only, or special (J = swap, 7 = split).
+function moveValueOf(card, allPawnsIn) {
+  const r = rankOf(card);
+  if (r === "A") return allPawnsIn ? 1 : null;
+  if (r === "K") return allPawnsIn ? 13 : null;
+  if (r === "Q") return 12;
+  if (r === "J") return null; // special: swap
+  if (r === "4") return -4;
+  return parseInt(r, 10); // 2..10 (7 also handled specially for split/early-capture)
+}
+
+function isEntryCard(card) {
+  const r = rankOf(card);
+  return r === "A" || r === "K";
+}
+function isJack(card) { return rankOf(card) === "J"; }
+function isSeven(card) { return rankOf(card) === "7"; }
+
+// ------------------------------------------------------------
+// Game state shape (stored in Firebase under games/<roomId>):
+// {
+//   phase: "lobby" | "exchanging" | "playing" | "finished",
+//   players: { <uid>: { name, color } },
+//   dealerColor, turnColor,
+//   deck: [cards...], hands: {red:[...],...}, pawns: {red:[p,p,p,p],...},
+//   pendingExchange: { red: card|null, ... }  // only during "exchanging"
+//   log: [...], winnerTeam: null, firstHandOfCycle: bool, hasDealtBefore: bool
+// }
+// pos >= 0  -> index 0..63 on the main loop
+// pos < 0   -> -1 = in base (not in play)
+// pos >= 1000 -> 1000+home-cell-index (0..3)
+// ------------------------------------------------------------
+
+function newGameState(playersByColor) {
+  const hands = {}, pawns = {};
+  for (const c of COLORS) {
+    hands[c] = [];
+    pawns[c] = [-1, -1, -1, -1];
+  }
+  return {
+    phase: "lobby",
+    players: playersByColor,
+    dealerColor: "red",
+    turnColor: null,
+    deck: [],
+    hands,
+    pawns,
+    pendingExchange: {},
+    chat: [],
+    log: [],
+    winnerTeam: null,
+    firstHandOfCycle: true,
+    hasDealtBefore: false,
+    lastSwap: null,
+    lastCapture: null,
+  };
+}
+
+function normalizeState(state) {
+  if (!state) return state;
+  if (!Array.isArray(state.deck)) state.deck = [];
+  if (!Array.isArray(state.log)) state.log = [];
+  if (!Array.isArray(state.chat)) state.chat = [];
+  if (!state.hands) state.hands = {};
+  if (!state.pawns) state.pawns = {};
+  if (!state.players) state.players = {};
+  if (!state.pendingExchange) state.pendingExchange = {};
+  for (const c of COLORS) {
+    if (!Array.isArray(state.hands[c])) state.hands[c] = [];
+    if (!Array.isArray(state.pawns[c])) state.pawns[c] = [-1, -1, -1, -1];
+  }
+  return state;
+}
+
+// Chat messages are capped so the stored state doesn't grow forever.
+function postChatMessage(state, color, text) {
+  const clean = String(text || "").trim().slice(0, 200);
+  if (!clean) return;
+  state.chat.push({ color, text: clean, ts: Date.now() });
+  if (state.chat.length > 100) state.chat = state.chat.slice(-100);
+}
+
+// Deal a new hand, then move into the blind card-exchange phase (instead of
+// straight into play) — partners must each submit one card before anyone
+// can start playing.
+function dealNewHand(state) {
+  let deck = state.deck.filter(Boolean);
+  if (deck.length < 4 * 5) {
+    deck = shuffle(buildDeck());
+    state.firstHandOfCycle = true;
+    if (state.hasDealtBefore) {
+      const order = COLORS;
+      const prevIdx = order.indexOf(state.dealerColor);
+      state.dealerColor = order[(prevIdx + 1) % 4];
+    }
+  }
+  state.hasDealtBefore = true;
+  const perPlayer = state.firstHandOfCycle ? 5 : 4;
+  for (const c of COLORS) {
+    state.hands[c] = deck.splice(0, perPlayer);
+  }
+  state.deck = deck;
+  state.firstHandOfCycle = false;
+
+  const order = COLORS;
+  const dIdx = order.indexOf(state.dealerColor);
+  state.turnColor = order[(dIdx + 1) % 4];
+
+  state.phase = "exchanging";
+  state.pendingExchange = { red: null, green: null, yellow: null, blue: null };
+  state.log.push(`Nuova mano distribuita (mazziere: ${state.dealerColor}). In attesa dello scambio tra compagni.`);
+}
+
+// A player submits one card, face-down, to give to their partner.
+function submitExchangeCard(state, color, card) {
+  if (state.phase !== "exchanging") throw new Error("non è il momento dello scambio");
+  if (state.pendingExchange[color]) throw new Error("hai già scelto la tua carta");
+  const hand = state.hands[color];
+  const ci = hand.indexOf(card);
+  if (ci === -1) throw new Error("carta non trovata in mano");
+  hand.splice(ci, 1);
+  state.pendingExchange[color] = card;
+  state.log.push(`${color} ha scelto la carta da scambiare.`);
+
+  const allSubmitted = COLORS.every((c) => state.pendingExchange[c]);
+  if (allSubmitted) {
+    for (const c of COLORS) {
+      const received = state.pendingExchange[PARTNER_OF[c]];
+      state.hands[c].push(received);
+    }
+    state.pendingExchange = {};
+    state.phase = "playing";
+    state.log.push("Scambio completato, si comincia a giocare.");
+  }
+}
+
+function allPawnsOnBoard(state, color) {
+  return state.pawns[color].every((p) => p !== -1);
+}
+
+function pawnsInBase(state, color) {
+  return state.pawns[color]
+    .map((p, i) => (p === -1 ? i : -1))
+    .filter((i) => i !== -1);
+}
+
+function stepsFromOwnBase(color, pos) {
+  const base = BOARD.baseIndex[color];
+  if (pos >= 1000) return null;
+  return (pos - base + 64) % 64;
+}
+
+// Pure wraparound on the shared 64-cell loop, ignoring anyone's home
+// stretch entirely. Used to offer "keep going around" as an explicit
+// alternative to turning into one's own home cells (entering home is a
+// choice, never mandatory, per the rules).
+function pathForwardLoopOnly(pos, n) {
+  const steps = [];
+  let cur = pos;
+  for (let i = 0; i < n; i++) {
+    cur = (cur + 1) % 64;
+    steps.push(cur);
+  }
+  return steps;
+}
+
+// Sequence of intermediate positions (exclusive of start, inclusive of end)
+// a pawn crosses moving forward `n` steps, turning into its own home
+// stretch once it reaches/passes its base. Correctly continues within the
+// home stretch if the pawn is already there. Returns null on overshoot
+// past the last home cell (in that case pathForwardLoopOnly is still a
+// valid alternative — see movesForValue).
+function pathForward(color, pos, n) {
+  const steps = [];
+  const base = BOARD.baseIndex[color];
+  if (pos >= 1000) {
+    const curHomeIdx = pos - 1000;
+    const nextIdx = curHomeIdx + n;
+    if (nextIdx > 3) return null;
+    for (let i = curHomeIdx + 1; i <= nextIdx; i++) steps.push(1000 + i);
+    return steps;
+  }
+  const already = stepsFromOwnBase(color, pos);
+  for (let i = 1; i <= n; i++) {
+    const travelled = already + i;
+    if (travelled > 64) {
+      const homeIdx = travelled - 64 - 1;
+      if (homeIdx > 3) return null;
+      steps.push(1000 + homeIdx);
+    } else if (travelled === 64) {
+      steps.push(base);
+    } else {
+      steps.push((base + travelled) % 64);
+    }
+  }
+  return steps;
+}
+
+function pathBackward(color, pos, n) {
+  if (pos >= 1000) return null;
+  const steps = [];
+  let cur = pos;
+  for (let i = 0; i < n; i++) {
+    cur = (cur - 1 + 64) % 64;
+    steps.push(cur);
+  }
+  return steps;
+}
+
+function occupantAt(state, pos) {
+  for (const c of COLORS) {
+    const idx = state.pawns[c].indexOf(pos);
+    if (idx !== -1) return { color: c, pawnIndex: idx };
+  }
+  return null;
+}
+
+function homeOccupant(state, color, homeIdx) {
+  const pos = 1000 + homeIdx;
+  return state.pawns[color].indexOf(pos); // -1 if none
+}
+
+function allPawnPositions(state) {
+  const out = [];
+  for (const c of COLORS) {
+    state.pawns[c].forEach((pos, idx) => {
+      if (pos !== -1) out.push({ color: c, pawnIndex: idx, pos });
+    });
+  }
+  return out;
+}
+
+// Can this pawn legally end its move on `dest`? (checks the universal
+// capture rule, with the one exception: a protected pawn on its own base
+// can never be captured, so landing exactly on it is illegal.)
+function destinationIsLegal(state, color, dest) {
+  if (dest >= 1000) return homeOccupant(state, color, dest - 1000) === -1;
+  const occ = occupantAt(state, dest);
+  if (!occ) return true;
+  return !isPawnProtected(state, occ.color, occ.pawnIndex);
+}
+
+// Standard (non-7) forward/backward move options for a single card value.
+// Whenever the home-turning path and the "just keep circling the main
+// loop" path lead to different places, BOTH are offered — entering one's
+// own home is always a choice, never mandatory.
+function movesForValue(state, color, value) {
+  const options = [];
+  state.pawns[color].forEach((pos, pawnIndex) => {
+    if (pos === -1) return;
+    if (value > 0) {
+      const addIfLegal = (path) => {
+        if (!path) return;
+        const mid = path.slice(0, -1);
+        if (mid.some((p) => occupantAt(state, p))) return; // can't pass over anyone
+        const dest = path[path.length - 1];
+        if (destinationIsLegal(state, color, dest)) {
+          options.push({ type: "move", pawnIndex, path });
+        }
+      };
+      const homePath = pathForward(color, pos, value);
+      addIfLegal(homePath);
+      if (pos < 1000) {
+        const loopPath = pathForwardLoopOnly(pos, value);
+        const homeDest = homePath ? homePath[homePath.length - 1] : null;
+        const loopDest = loopPath[loopPath.length - 1];
+        // only add the loop alternative when it actually differs from (or
+        // replaces, on overshoot) the home-turning path — i.e. this move
+        // genuinely reaches/crosses the pawn's own base.
+        if (homeDest === null || homeDest !== loopDest) addIfLegal(loopPath);
+      }
+    } else {
+      const path = pathBackward(color, pos, -value);
+      if (!path) return;
+      const mid = path.slice(0, -1);
+      const blocked = mid.some((p) => occupantAt(state, p));
+      if (!blocked) {
+        const dest = path[path.length - 1];
+        if (destinationIsLegal(state, color, dest)) options.push({ type: "move", pawnIndex, path });
+      }
+    }
+  });
+  return options;
+}
+
+// Legal move OPTIONS for a card. Each option describes a distinct way to
+// play it: {type:"enter",pawnIndex} | {type:"move",pawnIndex,path} |
+// {type:"jack"} (opens a 2-pawn picker in the UI) |
+// {type:"seven"} (opens the split allocator in the UI, only offered when
+// at least one valid distribution exists).
+function legalMovesForCard(state, color, card) {
+  const options = [];
+  const allIn = allPawnsOnBoard(state, color);
+
+  if (isEntryCard(card) && !allIn) {
+    const inBase = pawnsInBase(state, color);
+    if (inBase.length > 0) options.push({ type: "enter", pawnIndex: inBase[0] });
+  }
+
+  if (isJack(card)) {
+    // pawns already "a casa" (home) don't count as "in gioco" for this
+    // precondition — only pawns actually on the main loop do.
+    const hasOwnPawnOnBoard = state.pawns[color].some((p) => p >= 0 && p < 1000);
+    const targets = jackableTargets(state);
+    if (hasOwnPawnOnBoard && targets.length >= 2) options.push({ type: "jack" });
+    return options; // Jack has no other use
+  }
+
+  if (isSeven(card)) {
+    if (sevenHasAnyDistribution(state, color)) options.push({ type: "seven" });
+    // fall through: a plain 7-on-one-pawn move is just a distribution of
+    // {pawnIndex: 7}, already covered by sevenHasAnyDistribution/apply.
+    return options;
+  }
+
+  const value = moveValueOf(card, allIn);
+  if (value !== null) {
+    options.push(...movesForValue(state, color, value));
+  }
+  return options;
+}
+
+// A pawn sitting on the base cell, never yet moved, cannot be chosen for
+// the Jack swap. We track "never moved" implicitly: a pawn is on its own
+// base index AND got there via entry — we approximate this as "pawn is
+// exactly on its own base cell" (matches the physical-board rule closely
+// enough: once it steps off, it's fair game again).
+function protectedPawnIndex(state, color) {
+  const baseIdx = BOARD.baseIndex[color];
+  const idx = state.pawns[color].indexOf(baseIdx);
+  return idx; // -1 if none on base
+}
+
+function isPawnProtected(state, color, pawnIndex) {
+  return protectedPawnIndex(state, color) === pawnIndex;
+}
+
+// ---- Jack: swap any two pawns on the board (not the protected one) ----
+function jackableTargets(state) {
+  return allPawnPositions(state).filter(
+    (p) => !isPawnProtected(state, p.color, p.pawnIndex)
+  );
+}
+
+function applyJackSwap(state, a, b) {
+  const posA = state.pawns[a.color][a.pawnIndex];
+  const posB = state.pawns[b.color][b.pawnIndex];
+  state.pawns[a.color][a.pawnIndex] = posB;
+  state.pawns[b.color][b.pawnIndex] = posA;
+  state.log.push(`scambio (Jack) tra ${a.color}#${a.pawnIndex + 1} e ${b.color}#${b.pawnIndex + 1}.`);
+  // recorded so every client can flash/highlight the swap on the board
+  state.lastSwap = {
+    id: (state.lastSwap && state.lastSwap.id ? state.lastSwap.id : 0) + 1,
+    ts: Date.now(),
+    a: { color: a.color, pawnIndex: a.pawnIndex, from: posA, to: posB },
+    b: { color: b.color, pawnIndex: b.pawnIndex, from: posB, to: posA },
+  };
+}
+
+// ---- 7: split across own pawns; a single pawn using the whole 7 may
+// capture early (stopping on an enemy before using all 7 steps). Split
+// portions (when more than one pawn is used) move their exact allocated
+// amount with normal blocking/landing rules. ----
+
+// Try moving one pawn `steps` forward, allowing an early stop-and-capture
+// on an enemy pawn if `allowEarlyCapture` is true (only when this pawn is
+// using the ENTIRE remaining 7 alone).
+function sevenSinglePawnPath(state, color, pos, steps, allowEarlyCapture) {
+  const full = pathForward(color, pos, steps);
+  if (!full) return null;
+  for (let i = 0; i < full.length; i++) {
+    const cell = full[i];
+    const occ = cell >= 1000 ? null : occupantAt(state, cell);
+    if (occ) {
+      if (occ.color === color) return null; // own pawn always blocks
+      if (isPawnProtected(state, occ.color, occ.pawnIndex)) return null; // never capturable
+      // enemy or partner pawn found before the end
+      if (i === full.length - 1) return full; // lands exactly on it: normal capture
+      if (allowEarlyCapture) return full.slice(0, i + 1); // stop here, capture early
+      return null; // blocked, no early-capture allowance for this portion
+    }
+    if (cell >= 1000) {
+      const homeOcc = homeOccupant(state, color, cell - 1000);
+      if (homeOcc !== -1) return null; // home cells are safe, can't land/pass
+    }
+  }
+  return full;
+}
+
+function sevenHasAnyDistribution(state, color) {
+  const pawns = state.pawns[color].map((p, i) => ({ p, i })).filter((x) => x.p !== -1);
+  if (pawns.length === 0) return false;
+  // whole 7 on a single pawn (with early-capture allowance)
+  for (const { p } of pawns) {
+    if (sevenSinglePawnPath(state, color, p, 7, true)) return true;
+  }
+  // any split across 2, 3, or all 4 pawns: try every way to write 7 as an
+  // ordered sum of positive parts, one per chosen pawn.
+  function tryCombos(pawnList, remaining, idx) {
+    if (idx === pawnList.length - 1) {
+      if (remaining <= 0) return false;
+      return !!sevenSinglePawnPath(state, color, pawnList[idx].p, remaining, true);
+    }
+    for (let s = 1; s <= remaining - (pawnList.length - 1 - idx); s++) {
+      if (sevenSinglePawnPath(state, color, pawnList[idx].p, s, true)) {
+        if (tryCombos(pawnList, remaining - s, idx + 1)) return true;
+      }
+    }
+    return false;
+  }
+  for (let size = 2; size <= pawns.length; size++) {
+    // choose `size` pawns out of pawns (order doesn't matter for the sum,
+    // but we permute since different pawns may only work in some slots)
+    const indices = pawns.map((_, i) => i);
+    const combos = kSubsets(indices, size);
+    for (const combo of combos) {
+      const chosen = combo.map((i) => pawns[i]);
+      if (tryCombos(chosen, 7, 0)) return true;
+    }
+  }
+  return false;
+}
+
+function kSubsets(arr, k) {
+  const out = [];
+  function rec(start, chosen) {
+    if (chosen.length === k) { out.push(chosen.slice()); return; }
+    for (let i = start; i < arr.length; i++) {
+      chosen.push(arr[i]);
+      rec(i + 1, chosen);
+      chosen.pop();
+    }
+  }
+  rec(0, []);
+  return out;
+}
+
+// Validate + return the paths for a chosen distribution, e.g.
+// [{pawnIndex, steps}, ...] summing to 7 (or less than 7 total pawn-steps
+// used if one portion captured early). Returns {pawnIndex: path} map, or
+// null if invalid.
+function sevenValidateDistribution(state, color, distribution) {
+  const total = distribution.reduce((s, d) => s + d.steps, 0);
+  if (total !== 7) return null;
+  const result = {};
+  // early capture (stopping short of the allocated steps upon hitting an
+  // enemy) is allowed for every portion, not just when the whole 7 is
+  // played on a single pawn — the rule is a property of the 7 itself.
+  for (const { pawnIndex, steps } of distribution) {
+    if (steps <= 0) continue;
+    const pos = state.pawns[color][pawnIndex];
+    if (pos === undefined || pos === -1) return null;
+    const path = sevenSinglePawnPath(state, color, pos, steps, true);
+    if (!path) return null;
+    result[pawnIndex] = path;
+  }
+  if (Object.keys(result).length === 0) return null;
+  return result;
+}
+
+function applySevenDistribution(state, color, distribution) {
+  const paths = sevenValidateDistribution(state, color, distribution);
+  if (!paths) throw new Error("distribuzione del 7 non valida");
+  for (const pawnIndexStr of Object.keys(paths)) {
+    const pawnIndex = parseInt(pawnIndexStr, 10);
+    const path = paths[pawnIndex];
+    const dest = path[path.length - 1];
+    if (dest < 1000) {
+      const occ = occupantAt(state, dest);
+      if (occ) {
+        recordCapture(state, occ, dest);
+        state.log.push(`${color} mangia ${occ.color} con parte del 7.`);
+      }
+    }
+    state.pawns[color][pawnIndex] = dest;
+  }
+  state.log.push(`${color} gioca il 7 (${Object.keys(paths).length} pedina/e).`);
+  checkWin(state);
+}
+
+// Records the last capture so every client can flash it on the board —
+// same mechanism as lastSwap for the Jack.
+function recordCapture(state, occ, atPos) {
+  state.lastCapture = {
+    id: (state.lastCapture && state.lastCapture.id ? state.lastCapture.id : 0) + 1,
+    ts: Date.now(),
+    color: occ.color,
+    pawnIndex: occ.pawnIndex,
+    atPos,
+  };
+  state.pawns[occ.color][occ.pawnIndex] = -1;
+}
+
+function anyLegalMove(state, color) {
+  for (const card of state.hands[color]) {
+    if (legalMovesForCard(state, color, card).length > 0) return true;
+  }
+  return false;
+}
+
+function applyMove(state, color, card, move) {
+  const hand = state.hands[color];
+  const ci = hand.indexOf(card);
+  if (ci !== -1) hand.splice(ci, 1);
+
+  if (move.type === "enter") {
+    const baseIdx = BOARD.baseIndex[color];
+    const occ = occupantAt(state, baseIdx);
+    if (occ) {
+      recordCapture(state, occ, baseIdx);
+      state.log.push(`${occ.color} mangiata sulla base da ${color} che entra.`);
+    }
+    state.pawns[color][move.pawnIndex] = baseIdx;
+    state.log.push(`${color} fa entrare una pedina con ${card}.`);
+    return;
+  }
+
+  if (move.type === "move") {
+    const dest = move.path[move.path.length - 1];
+    if (dest < 1000) {
+      const occ = occupantAt(state, dest);
+      if (occ) {
+        recordCapture(state, occ, dest);
+        state.log.push(`${color} mangia ${occ.color} con ${card}.`);
+      }
+    }
+    state.pawns[color][move.pawnIndex] = dest;
+    state.log.push(`${color} muove con ${card}.`);
+    // if the path swung past this pawn's own base without turning into
+    // its home stretch, say so explicitly — otherwise it looks like the
+    // pawn "should" have gone home and silently didn't.
+    const baseIdx = BOARD.baseIndex[color];
+    if (dest < 1000 && move.path.includes(baseIdx)) {
+      state.log.push(`(${color} #${move.pawnIndex + 1} ha superato la propria base senza entrare in casa — il numero non era quello esatto per l'ingresso.)`);
+    }
+    checkWin(state);
+    return;
+  }
+
+  if (move.type === "jack") {
+    applyJackSwap(state, move.a, move.b);
+    return;
+  }
+
+  if (move.type === "seven") {
+    applySevenDistribution(state, color, move.distribution);
+    return;
+  }
+}
+
+function checkWin(state) {
+  for (const team of ["A", "B"]) {
+    const teamColors = COLORS.filter((c) => TEAM_OF[c] === team);
+    const allHome = teamColors.every((c) => state.pawns[c].every((p) => p >= 1000));
+    if (allHome) {
+      state.winnerTeam = team;
+      state.phase = "finished";
+      state.log.push(`La coppia ${team} vince la partita!`);
+    }
+  }
+}
+
+// Starts a fresh game in the same room, keeping the same players/names —
+// used by the "nuova partita" button on the win screen.
+function resetForNewGame(state) {
+  for (const c of COLORS) {
+    state.pawns[c] = [-1, -1, -1, -1];
+    state.hands[c] = [];
+  }
+  state.deck = [];
+  state.pendingExchange = {};
+  state.log = ["Nuova partita nella stessa stanza."];
+  state.winnerTeam = null;
+  state.lastSwap = null;
+  state.lastCapture = null;
+  state.hasDealtBefore = false;
+  state.firstHandOfCycle = true;
+  dealNewHand(state);
+}
+
+// Burn exactly ONE card (the one the player attempted/chose that had no
+// legal move), then advance the turn — never the whole hand at once.
+function burnOneCard(state, color, card) {
+  const hand = state.hands[color];
+  const ci = hand.indexOf(card);
+  if (ci !== -1) hand.splice(ci, 1);
+  state.log.push(`${color} brucia ${card} (nessuna mossa).`);
+}
+
+function advanceTurn(state) {
+  const allEmpty = COLORS.every((c) => state.hands[c].length === 0);
+  if (allEmpty) {
+    dealNewHand(state);
+    return;
+  }
+  const order = COLORS;
+  const i = order.indexOf(state.turnColor);
+  let next = order[(i + 1) % 4];
+  // skip a player whose hand is already empty this cycle (waiting for redeal)
+  let guard = 0;
+  while (state.hands[next].length === 0 && guard < 4) {
+    next = order[(order.indexOf(next) + 1) % 4];
+    guard++;
+  }
+  state.turnColor = next;
+}
+
+function activeColorFor(state, seatColor) {
+  const mine = state.pawns[seatColor];
+  const allHome = mine.every((p) => p >= 1000);
+  if (!allHome) return seatColor;
+  const partner = PARTNER_OF[seatColor];
+  const partnerHome = state.pawns[partner].every((p) => p >= 1000);
+  return partnerHome ? null : partner;
+}
+
+if (typeof module !== "undefined") {
+  module.exports = {
+    COLORS, TEAM_OF, TEAM_LABEL, PARTNER_OF, NEXT_COLOR,
+    buildDeck, shuffle, rankOf, moveValueOf, isEntryCard, isJack, isSeven,
+    newGameState, normalizeState, dealNewHand, submitExchangeCard, postChatMessage,
+    allPawnsOnBoard, pawnsInBase, stepsFromOwnBase, pathForward, pathBackward,
+    occupantAt, homeOccupant, allPawnPositions, isPawnProtected, jackableTargets,
+    legalMovesForCard, sevenHasAnyDistribution, sevenValidateDistribution,
+    anyLegalMove, applyMove, checkWin, resetForNewGame, burnOneCard, advanceTurn, activeColorFor,
+  };
+}
+
+</script>
+<script>
+// ============================================================
+// Wrapper minimale per Firebase Realtime Database.
+// Riempi firebase-config.js con le tue chiavi (vedi README).
+// ============================================================
+
+let app, db;
+
+function initFirebase() {
+  app = firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.database();
+}
+
+function roomRef(roomId) {
+  return db.ref("games/" + roomId);
+}
+
+function watchRoom(roomId, callback) {
+  roomRef(roomId).on("value", (snap) => {
+    callback(normalizeState(snap.val()));
+  });
+}
+
+function writeState(roomId, state) {
+  return roomRef(roomId).set(state);
+}
+
+async function updateState(roomId, mutatorFn) {
+  // read-modify-write with a transaction so two players acting at the
+  // same instant don't overwrite each other.
+  const ref = roomRef(roomId);
+  let caughtError = null;
+  const result = await ref
+    .transaction((current) => {
+      if (current === null) return current;
+      try {
+        const copy = normalizeState(JSON.parse(JSON.stringify(current)));
+        mutatorFn(copy);
+        return copy;
+      } catch (e) {
+        caughtError = e;
+        return undefined; // abort this transaction attempt
+      }
+    })
+    .catch((e) => {
+      caughtError = e;
+      return null;
+    });
+  if (caughtError) {
+    console.error("updateState error:", caughtError);
+    throw caughtError;
+  }
+  if (result && result.committed === false) {
+    throw new Error("La mossa non è stata salvata (transazione non completata). Riprova.");
+  }
+  return result;
+}
+
+</script>
+<script>
+// ============================================================
+// Rendering del tabellone (stessa geometria validata: 47,2x47,2cm,
+// 64 caselle, 4 caselle-casa per colore) come SVG scalabile.
+// Stile grafico allineato al tabellone fisico definitivo: sfondo
+// caldo con gradiente, basi con angolo arrotondato, caselle lucide.
+// ============================================================
+
+const BASE_COL = {
+  red: "#FF2D55",
+  green: "#00E68A",
+  yellow: "#FFD500",
+  blue: "#00B0FF",
+};
+const PAWN_RING = "#3A2B22";
+
+function lighten(hex, amt) {
+  hex = hex.replace("#", "");
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const nr = Math.round(r + (255 - r) * amt);
+  const ng = Math.round(g + (255 - g) * amt);
+  const nb = Math.round(b + (255 - b) * amt);
+  return (
+    "#" +
+    [nr, ng, nb].map((v) => v.toString(16).padStart(2, "0")).join("")
+  );
+}
+function darken(hex, amt) {
+  hex = hex.replace("#", "");
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const nr = Math.round(r * (1 - amt));
+  const ng = Math.round(g * (1 - amt));
+  const nb = Math.round(b * (1 - amt));
+  return (
+    "#" +
+    [nr, ng, nb].map((v) => v.toString(16).padStart(2, "0")).join("")
+  );
+}
+
+function ns_el(tag, attrs) {
+  const ns = "http://www.w3.org/2000/svg";
+  const e = document.createElementNS(ns, tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => e.setAttribute(k, v));
+  return e;
+}
+
+function buildBoardSVG(containerEl, board) {
+  const S = board.boardSizeMm;
+  const R = board.cellRadiusMm;
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${S} ${S}`);
+  svg.setAttribute("id", "board-svg");
+  svg.style.width = "100%";
+  svg.style.height = "auto";
+  svg.style.display = "block";
+  svg.style.borderRadius = "14px";
+  svg.style.boxShadow = "0 6px 18px rgba(58,43,34,0.25)";
+
+  // ---- defs: gradients for background, bases, cells ----
+  const defs = ns_el("defs", {});
+  const bg = ns_el("radialGradient", { id: "bg-grad", cx: "40%", cy: "35%", r: "80%" });
+  [["0%", "#F6ECD8"], ["55%", "#EBDBB8"], ["100%", "#DEC79A"]].forEach(([off, col]) => {
+    bg.appendChild(ns_el("stop", { offset: off, "stop-color": col }));
+  });
+  defs.appendChild(bg);
+
+  for (const color of board.order) {
+    const hex = BASE_COL[color];
+    const g = ns_el("radialGradient", { id: "cell-" + color, cx: "32%", cy: "28%", r: "78%" });
+    g.appendChild(ns_el("stop", { offset: "0%", "stop-color": "#ffffff", "stop-opacity": "0.75" }));
+    g.appendChild(ns_el("stop", { offset: "18%", "stop-color": hex, "stop-opacity": "0.85" }));
+    g.appendChild(ns_el("stop", { offset: "55%", "stop-color": hex }));
+    g.appendChild(ns_el("stop", { offset: "100%", "stop-color": darken(hex, 0.35) }));
+    defs.appendChild(g);
+
+    const gl = ns_el("radialGradient", { id: "light-" + color, cx: "32%", cy: "28%", r: "78%" });
+    // used for the marker ("-4") cell fill — kept a bit lighter than full
+    // saturation just so its small dark cap outline still reads, but no
+    // longer washed out.
+    const lc = lighten(hex, 0.42);
+    gl.appendChild(ns_el("stop", { offset: "0%", "stop-color": "#ffffff", "stop-opacity": "0.7" }));
+    gl.appendChild(ns_el("stop", { offset: "20%", "stop-color": lc, "stop-opacity": "0.85" }));
+    gl.appendChild(ns_el("stop", { offset: "100%", "stop-color": lc }));
+    defs.appendChild(gl);
+
+    const base = ns_el("linearGradient", { id: "base-" + color, x1: "0%", y1: "0%", x2: "100%", y2: "100%" });
+    const baseLight = lighten(hex, 0.2);
+    base.appendChild(ns_el("stop", { offset: "0%", "stop-color": lighten(hex, 0.35) }));
+    base.appendChild(ns_el("stop", { offset: "55%", "stop-color": baseLight }));
+    base.appendChild(ns_el("stop", { offset: "100%", "stop-color": darken(hex, 0.1) }));
+    defs.appendChild(base);
+
+    // soft colored halo drawn behind each pawn so it visually "lifts" off
+    // the board instead of blending into the cream/wood background.
+    const halo = ns_el("radialGradient", { id: "pawn-halo-" + color, cx: "50%", cy: "50%", r: "50%" });
+    halo.appendChild(ns_el("stop", { offset: "0%", "stop-color": hex, "stop-opacity": "0.55" }));
+    halo.appendChild(ns_el("stop", { offset: "60%", "stop-color": hex, "stop-opacity": "0.22" }));
+    halo.appendChild(ns_el("stop", { offset: "100%", "stop-color": hex, "stop-opacity": "0" }));
+    defs.appendChild(halo);
+  }
+  const cream = ns_el("radialGradient", { id: "cell-cream", cx: "32%", cy: "28%", r: "78%" });
+  cream.appendChild(ns_el("stop", { offset: "0%", "stop-color": "#FFFDF6" }));
+  cream.appendChild(ns_el("stop", { offset: "45%", "stop-color": "#FBF4E4" }));
+  cream.appendChild(ns_el("stop", { offset: "100%", "stop-color": "#E9DCBE" }));
+  defs.appendChild(cream);
+
+  const capSheen = ns_el("radialGradient", { id: "cap-sheen", cx: "35%", cy: "28%", r: "75%" });
+  capSheen.appendChild(ns_el("stop", { offset: "0%", "stop-color": "#ffffff", "stop-opacity": "0.32" }));
+  capSheen.appendChild(ns_el("stop", { offset: "40%", "stop-color": "#ffffff", "stop-opacity": "0.04" }));
+  capSheen.appendChild(ns_el("stop", { offset: "100%", "stop-color": "#000000", "stop-opacity": "0.28" }));
+  defs.appendChild(capSheen);
+
+  svg.appendChild(defs);
+
+  // ---- background ----
+  svg.appendChild(ns_el("rect", { x: 0, y: 0, width: S, height: S, rx: 16, fill: "url(#bg-grad)" }));
+
+  function line(x1, y1, x2, y2) {
+    return ns_el("line", {
+      x1, y1, x2, y2,
+      stroke: "#8a6a42", "stroke-width": 2, "stroke-linecap": "round", opacity: 0.75,
+    });
+  }
+
+  // connecting lines along the loop
+  for (let i = 0; i < board.loopCells.length; i++) {
+    const a = board.loopCells[i];
+    const b = board.loopCells[(i + 1) % board.loopCells.length];
+    svg.appendChild(line(a.x, a.y, b.x, b.y));
+  }
+  // connecting lines for home paths (base -> home1 -> home2 -> home3 -> home4)
+  for (const color of board.order) {
+    const baseCell = board.loopCells[board.baseIndex[color]];
+    const hp = board.homePaths[color];
+    let prev = baseCell;
+    for (const p of hp) {
+      svg.appendChild(line(prev.x, prev.y, p.x, p.y));
+      prev = p;
+    }
+  }
+
+  // ---- base corner zones (sharp true corner, rounded opposite corner) ----
+  const pitch = board.pitchMm || 42;
+  const zone = pitch * 1.05;
+  const Rc = zone * 0.55;
+  board.loopCells.forEach((cell, idx) => {
+    if (!cell.isBase) return;
+    const color = cell.baseColor;
+    const nearLeft = cell.x < S / 2;
+    const nearTop = cell.y < S / 2;
+    let d;
+    if (nearTop && nearLeft) {
+      const x0 = 4, y0 = 4;
+      d = `M ${x0} ${y0} H ${x0 + zone} V ${y0 + zone - Rc} A ${Rc} ${Rc} 0 0 1 ${x0 + zone - Rc},${y0 + zone} H ${x0} Z`;
+    } else if (nearTop && !nearLeft) {
+      const x0 = S - 4 - zone, y0 = 4;
+      d = `M ${x0 + zone} ${y0} V ${y0 + zone} H ${x0 + Rc} A ${Rc} ${Rc} 0 0 1 ${x0},${y0 + zone - Rc} V ${y0} Z`;
+    } else if (!nearTop && !nearLeft) {
+      const x0 = S - 4 - zone, y0 = S - 4 - zone;
+      d = `M ${x0 + zone} ${y0 + zone} H ${x0} V ${y0 + Rc} A ${Rc} ${Rc} 0 0 1 ${x0 + Rc},${y0} H ${x0 + zone} Z`;
+    } else {
+      const x0 = 4, y0 = S - 4 - zone;
+      d = `M ${x0} ${y0 + zone} V ${y0} H ${x0 + zone - Rc} A ${Rc} ${Rc} 0 0 1 ${x0 + zone},${y0 + Rc} V ${y0 + zone} Z`;
+    }
+    svg.appendChild(ns_el("path", { d, fill: `url(#base-${color})` }));
+    svg.appendChild(ns_el("path", { d, fill: "none", stroke: PAWN_RING, "stroke-width": 1, opacity: 0.35 }));
+  });
+
+  function cell(cx, cy, r, fillId, strokeW) {
+    const g = ns_el("g", {});
+    g.appendChild(ns_el("circle", { cx: cx + 0.9, cy: cy + 1.4, r, fill: "#22140a", opacity: 0.28 }));
+    g.appendChild(ns_el("circle", { cx, cy, r: r + 0.6, fill: "none", stroke: "#fff", "stroke-width": 0.8, opacity: 0.35 }));
+    g.appendChild(ns_el("circle", { cx, cy, r, fill: `url(#${fillId})`, stroke: PAWN_RING, "stroke-width": strokeW }));
+    g.appendChild(ns_el("ellipse", {
+      cx: cx - r * 0.3, cy: cy - r * 0.36, rx: r * 0.36, ry: r * 0.24, fill: "#ffffff", opacity: 0.55,
+    }));
+    return g;
+  }
+
+  // Base, "-4" marker, and home cells all share this look: white/cream
+  // inside, bold colored ring — same size as every other cell, so a real
+  // pawn (filled, crowned) is unmistakably different from the empty slot.
+  function specialCell(cx, cy, r, colorHex) {
+    const g = ns_el("g", {});
+    g.appendChild(ns_el("circle", { cx: cx + 0.9, cy: cy + 1.4, r, fill: "#22140a", opacity: 0.22 }));
+    g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-cream)", stroke: colorHex, "stroke-width": 3.4 }));
+    g.appendChild(ns_el("circle", { cx, cy, r: r - 2.4, fill: "none", stroke: colorHex, "stroke-width": 1, opacity: 0.5 }));
+    return g;
+  }
+
+  // cells
+  board.loopCells.forEach((c, idx) => {
+    let g;
+    if (c.isBase) g = specialCell(c.x, c.y, R, BASE_COL[c.baseColor]);
+    else if (c.isMarker) g = specialCell(c.x, c.y, R, BASE_COL[c.markerColor]);
+    else g = cell(c.x, c.y, R, "cell-cream", 1.2);
+    g.setAttribute("data-pos", idx);
+    g.setAttribute("class", "board-cell");
+    svg.appendChild(g);
+  });
+
+  // home cells — same white-with-colored-ring treatment, same size as
+  // every other cell on the board (previously smaller/inconsistent).
+  for (const color of board.order) {
+    board.homePaths[color].forEach((p, hIdx) => {
+      const g = specialCell(p.x, p.y, R, BASE_COL[color]);
+      g.setAttribute("data-home", color + ":" + hIdx);
+      g.setAttribute("class", "board-cell");
+      svg.appendChild(g);
+    });
+  }
+
+  containerEl.innerHTML = "";
+  containerEl.appendChild(svg);
+  resetPawnAnimState();
+  return svg;
+}
+
+function capOutlinePath(R, teeth, jag) {
+  teeth = teeth || 20;
+  jag = jag || 0.16;
+  const Ro = R;
+  const Ri = R * (1 - jag);
+  const n = teeth * 2;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const ang = ((2 * Math.PI) / n) * i - Math.PI / 2;
+    const r = i % 2 === 0 ? Ro : Ri;
+    pts.push([r * Math.cos(ang), r * Math.sin(ang)]);
+  }
+  let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)} `;
+  for (let i = 1; i < pts.length; i++) d += `L ${pts[i][0].toFixed(2)} ${pts[i][1].toFixed(2)} `;
+  d += "Z";
+  return d;
+}
+
+// Draw one pawn's visual, entirely relative to (0,0) — the caller wraps it
+// in a <g transform="translate(x,y)"> so the whole thing can be repositioned
+// (and animated) just by changing that one transform.
+function pawnIcon(color, r) {
+  const ns = "http://www.w3.org/2000/svg";
+  const g = document.createElementNS(ns, "g");
+  const s = r / 12; // scale factor (icons designed on a ~12-unit radius)
+  const ICON_COL = "#ffffff";
+
+  function path(d, extra) {
+    return ns_el("path", Object.assign({
+      d, fill: "none", stroke: ICON_COL, "stroke-width": 1.6,
+      "stroke-linecap": "round", "stroke-linejoin": "round",
+    }, extra || {}));
+  }
+  function circle(cx2, cy2, rr, extra) {
+    return ns_el("circle", Object.assign({ cx: cx2, cy: cy2, r: rr, fill: "none", stroke: ICON_COL, "stroke-width": 1.6 }, extra || {}));
+  }
+
+  const wrap = ns_el("g", { transform: `scale(${s})`, opacity: 0.95 });
+
+  if (color === "red") {
+    // Anchor
+    wrap.appendChild(circle(0, -7, 2.1, { "stroke-width": 1.5 }));
+    wrap.appendChild(path("M 0 -5 L 0 6"));
+    wrap.appendChild(path("M -4.5 -2 L 4.5 -2"));
+    wrap.appendChild(path("M -6 2 C -6 6.5 -2.5 8.5 0 8.5 C 2.5 8.5 6 6.5 6 2"));
+    wrap.appendChild(path("M -6 2 L -3.6 2"));
+    wrap.appendChild(path("M 6 2 L 3.6 2"));
+  } else if (color === "green") {
+    // Ship's wheel
+    wrap.appendChild(circle(0, 0, 6, {}));
+    wrap.appendChild(circle(0, 0, 1.6, {}));
+    for (let i = 0; i < 6; i++) {
+      const ang = (Math.PI / 3) * i;
+      const x1 = Math.cos(ang) * 1.6, y1 = Math.sin(ang) * 1.6;
+      const x2 = Math.cos(ang) * 7.6, y2 = Math.sin(ang) * 7.6;
+      wrap.appendChild(path(`M ${x1.toFixed(2)} ${y1.toFixed(2)} L ${x2.toFixed(2)} ${y2.toFixed(2)}`));
+    }
+  } else if (color === "yellow") {
+    // Fish
+    wrap.appendChild(path("M -8 0 C -5 -5 4 -5 7 0 C 4 5 -5 5 -8 0 Z"));
+    wrap.appendChild(path("M 7 0 L 10.5 -3 L 10.5 3 Z", { fill: ICON_COL, stroke: "none" }));
+    wrap.appendChild(circle(-4.2, -0.8, 0.9, { fill: "#22140a", stroke: "none" }));
+  } else if (color === "blue") {
+    // Sailboat
+    wrap.appendChild(path("M -0.3 -9 L -0.3 5.5"));
+    wrap.appendChild(path("M 0 -8 C 4.8 -6 5 -0.5 0 2 Z", { fill: ICON_COL, stroke: "none" }));
+    wrap.appendChild(path("M -6.5 6.5 L 6.5 6.5 L 4.3 9.3 L -4.3 9.3 Z", { fill: ICON_COL, stroke: "none" }));
+  }
+  g.appendChild(wrap);
+  return g;
+}
+
+// Build one pawn's full visual (halo, shadow, cap, icon, number badge),
+// relative to (0,0). The returned <g> is meant to be placed inside an
+// outer <g transform="translate(x,y)"> — see renderPawns.
+function buildPawnGroup(color, pawnIndex, capR) {
+  const ns = "http://www.w3.org/2000/svg";
+  const g = document.createElementNS(ns, "g");
+  g.setAttribute("class", "pawn-visual");
+  const outline = capOutlinePath(capR, 20, 0.16);
+  g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 1.85, fill: `url(#pawn-halo-${color})` }));
+  g.appendChild(ns_el("path", {
+    d: outline, transform: `translate(1.4,2.2)`, fill: "#000000", opacity: 0.45,
+  }));
+  g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 1.14, fill: "none", stroke: "#fffaf0", "stroke-width": 3.2 }));
+  g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 1.14, fill: "none", stroke: "#22140a", "stroke-width": 1, opacity: 0.5 }));
+  const cap = ns_el("path", { d: outline, fill: BASE_COL[color], stroke: "#140c07", "stroke-width": 2.1 });
+  g.appendChild(cap);
+  g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 0.8, fill: "none", stroke: "#22140a", "stroke-width": 1, opacity: 0.3 }));
+  g.appendChild(ns_el("path", { d: outline, fill: "url(#cap-sheen)" }));
+  g.appendChild(pawnIcon(color, capR));
+  const bx = capR * 0.62, by = capR * 0.62;
+  g.appendChild(ns_el("circle", { cx: bx, cy: by, r: 6.2, fill: "#22140a", stroke: "#fffaf0", "stroke-width": 1.4 }));
+  const t = document.createElementNS(ns, "text");
+  t.setAttribute("x", bx);
+  t.setAttribute("y", by + 2.8);
+  t.setAttribute("text-anchor", "middle");
+  t.setAttribute("font-size", "8");
+  t.setAttribute("font-family", "sans-serif");
+  t.setAttribute("font-weight", "700");
+  t.setAttribute("fill", "#fff");
+  t.textContent = String(pawnIndex + 1);
+  g.appendChild(t);
+  return g;
+}
+
+// Remembers, per pawn, the position it was last actually drawn at — so a
+// new renderPawns() call can tell which pawns moved and animate them
+// stepping through the board instead of teleporting straight there.
+const _pawnAnimState = { positions: {}, els: {}, lastSwapId: null, lastCaptureId: null };
+// Briefly bursts a small colored ring at the spot where a pawn was just
+// captured — a quick "poof" so a capture is obvious to everyone, not just
+// the player who made it.
+function flashCapture(svg, board, color, pos) {
+  if (pos == null || pos < 0) return;
+  const p = pos >= 1000 ? board.homePaths[color][pos - 1000] : board.loopCells[pos];
+  const ns = "http://www.w3.org/2000/svg";
+  const g = document.createElementNS(ns, "g");
+  g.setAttribute("class", "capture-flash");
+  const ring = ns_el("circle", { cx: p.x, cy: p.y, r: board.cellRadiusMm * 0.6, fill: "none", stroke: BASE_COL[color], "stroke-width": 4, opacity: 0.9 });
+  g.appendChild(ring);
+  for (let i = 0; i < 6; i++) {
+    const ang = (Math.PI / 3) * i;
+    const line = ns_el("line", {
+      x1: p.x + Math.cos(ang) * board.cellRadiusMm * 0.7, y1: p.y + Math.sin(ang) * board.cellRadiusMm * 0.7,
+      x2: p.x + Math.cos(ang) * board.cellRadiusMm * 1.3, y2: p.y + Math.sin(ang) * board.cellRadiusMm * 1.3,
+      stroke: BASE_COL[color], "stroke-width": 2.4, "stroke-linecap": "round", opacity: 0.85,
+    });
+    g.appendChild(line);
+  }
+  svg.appendChild(g);
+  // grow + fade over a few discrete steps (kept simple, no CSS transition
+  // dependency, consistent with the rest of the board's animation style)
+  let step = 0;
+  const steps = 6;
+  const grow = () => {
+    step++;
+    const scale = 1 + step * 0.18;
+    const op = Math.max(0, 0.9 - step * 0.15);
+    g.setAttribute("transform", `translate(${p.x},${p.y}) scale(${scale}) translate(${-p.x},${-p.y})`);
+    g.setAttribute("opacity", op);
+    if (step < steps) setTimeout(grow, 60);
+    else g.remove();
+  };
+  setTimeout(grow, 30);
+}
+
+// Shrinks + fades a captured pawn's element in place before removing it,
+// instead of it just vanishing instantly.
+function animateCaptureOut(el) {
+  let step = 0;
+  const steps = 6;
+  const baseTransform = el.getAttribute("transform") || "";
+  const tick = () => {
+    step++;
+    const scale = Math.max(0, 1 - step / steps);
+    el.setAttribute("transform", `${baseTransform} scale(${scale})`);
+    el.setAttribute("opacity", String(scale));
+    if (step < steps) setTimeout(tick, 45);
+    else el.remove();
+  };
+  tick();
+}
+
+function resetPawnAnimState() {
+  _pawnAnimState.positions = {};
+  _pawnAnimState.els = {};
+  _pawnAnimState.lastSwapId = null; // null = "unknown yet", avoids replaying an old swap on (re)join
+  _pawnAnimState.lastCaptureId = null;
+}
+
+// Briefly highlights a Jack swap: a dashed gold arc between the two cells
+// involved, plus a pulsing ring on each pawn's new spot. Purely decorative,
+// removes itself after ~1.1s.
+function flashJackSwap(svg, board, swapInfo) {
+  const ns = "http://www.w3.org/2000/svg";
+  const g = document.createElementNS(ns, "g");
+  g.setAttribute("class", "jack-flash");
+  const pa = cellForColor(board, swapInfo.a.color, swapInfo.a.to);
+  const pb = cellForColor(board, swapInfo.b.color, swapInfo.b.to);
+  const R = board.cellRadiusMm;
+
+  // a bold gold label at the midpoint, plus growing/fading rings on both
+  // landing spots — timed to appear right as the pawns finish arcing into
+  // place, so the swap reads as unmistakable rather than a quiet snap.
+  const midX = (pa.x + pb.x) / 2, midY = (pa.y + pb.y) / 2;
+  const badge = ns_el("text", {
+    x: midX, y: midY, "text-anchor": "middle", "dominant-baseline": "middle",
+    "font-size": R * 1.1, "font-family": "sans-serif",
+  });
+  badge.textContent = "⇄";
+  badge.setAttribute("fill", "#D9B65C");
+  badge.setAttribute("stroke", "#3A2B22");
+  badge.setAttribute("stroke-width", "1.2");
+  g.appendChild(badge);
+  svg.appendChild(g);
+
+  [pa, pb].forEach((p) => {
+    const ring = ns_el("circle", { cx: p.x, cy: p.y, r: R * 0.6, fill: "none", stroke: "#D9B65C", "stroke-width": 4.5, opacity: 0.95 });
+    svg.appendChild(ring);
+    let step = 0;
+    const steps = 10;
+    const pulse = () => {
+      step++;
+      ring.setAttribute("r", R * (0.6 + step * 0.16));
+      ring.setAttribute("opacity", String(Math.max(0, 0.95 - step * 0.1)));
+      if (step < steps) setTimeout(pulse, 55);
+      else ring.remove();
+    };
+    setTimeout(pulse, 220); // start once the arc motion is mostly done
+  });
+
+  setTimeout(() => g.remove(), 1400);
+}
+
+// Moves a pawn element along a visible arched path from `fromXY` to `toXY`
+// (used for Jack swaps) instead of snapping — this is what actually makes
+// the swap obvious: you see both pawns cross paths.
+function animateSwapArc(el, fromXY, toXY, genToken) {
+  const steps = 10;
+  const durationMs = 26;
+  const midX = (fromXY.x + toXY.x) / 2;
+  const midY = (fromXY.y + toXY.y) / 2 - 34; // arch upward
+  let i = 0;
+  function tick() {
+    if (el.__animGen !== genToken) return;
+    if (i > steps) return;
+    const t = i / steps;
+    const x = (1 - t) * (1 - t) * fromXY.x + 2 * (1 - t) * t * midX + t * t * toXY.x;
+    const y = (1 - t) * (1 - t) * fromXY.y + 2 * (1 - t) * t * midY + t * t * toXY.y;
+    const scale = 1 + Math.sin(Math.PI * t) * 0.22; // slight pop as it arcs
+    el.setAttribute("transform", `translate(${x},${y}) scale(${scale})`);
+    i++;
+    if (i <= steps) setTimeout(tick, durationMs);
+  }
+  tick();
+}
+
+function pathForAnimation(color, oldPos, newPos) {
+  if (oldPos === -1 || newPos === -1 || oldPos === newPos) return null;
+  if (typeof pathForward !== "function") return null; // engine.js not loaded (shouldn't happen)
+  // forward, possibly turning into home
+  for (let n = 1; n <= 13; n++) {
+    const p = pathForward(color, oldPos, n);
+    if (p && p[p.length - 1] === newPos) return p;
+  }
+  // forward, staying on the loop (wrap past one's own base without entering home)
+  if (oldPos < 1000 && newPos < 1000 && typeof pathForwardLoopOnly === "function") {
+    for (let n = 1; n <= 13; n++) {
+      const p = pathForwardLoopOnly(oldPos, n);
+      if (p[p.length - 1] === newPos) return p;
+    }
+  }
+  // backward (the "4" card)
+  if (oldPos < 1000 && newPos < 1000 && typeof pathBackward === "function") {
+    const p = pathBackward(color, oldPos, 4);
+    if (p && p[p.length - 1] === newPos) return p;
+  }
+  // advancing further within the home stretch
+  if (oldPos >= 1000 && newPos >= 1000 && newPos > oldPos) {
+    const p = [];
+    for (let i = oldPos + 1; i <= newPos; i++) p.push(i);
+    return p;
+  }
+  return null; // couldn't reconstruct (e.g. a Jack swap) — caller will snap instead
+}
+
+function animateAlongPath(el, board, path, color, stepMs, genToken) {
+  let i = 0;
+  function step() {
+    if (el.__animGen !== genToken) return; // a newer move superseded this animation
+    if (i >= path.length) return;
+    const cell = cellForColor(board, color, path[i]);
+    el.setAttribute("transform", `translate(${cell.x},${cell.y})`);
+    i++;
+    if (i < path.length) setTimeout(step, stepMs);
+  }
+  step();
+}
+
+function cellForColor(board, color, pos) {
+  if (pos >= 1000) return board.homePaths[color][pos - 1000];
+  return board.loopCells[pos];
+}
+
+function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
+  const ns = "http://www.w3.org/2000/svg";
+  const R = board.cellRadiusMm;
+  const capR = R - 1;
+  const stepMs = 170;
+
+  let freshSwap = false;
+  if (lastSwap && lastSwap.id && lastSwap.id !== _pawnAnimState.lastSwapId) {
+    _pawnAnimState.lastSwapId = lastSwap.id;
+    // only animate swaps that just happened — never replay an old one that
+    // was already sitting in the game state when this client (re)joined
+    const ageMs = Date.now() - (lastSwap.ts || 0);
+    if (ageMs >= 0 && ageMs < 4000) {
+      freshSwap = true;
+      flashJackSwap(svg, board, lastSwap);
+    }
+  }
+  let freshCapture = false;
+  if (lastCapture && lastCapture.id && lastCapture.id !== _pawnAnimState.lastCaptureId) {
+    _pawnAnimState.lastCaptureId = lastCapture.id;
+    const ageMs = Date.now() - (lastCapture.ts || 0);
+    if (ageMs >= 0 && ageMs < 4000) {
+      freshCapture = true;
+      flashCapture(svg, board, lastCapture.color, lastCapture.atPos);
+    }
+  }
+
+  const seen = new Set();
+
+  for (const color of Object.keys(pawns)) {
+    pawns[color].forEach((pos, pawnIndex) => {
+      const key = color + "-" + pawnIndex;
+      if (pos === -1) {
+        // not on the board any more (captured): shrink+fade it out instead
+        // of just vanishing, then remove.
+        const existing = _pawnAnimState.els[key];
+        if (existing) {
+          delete _pawnAnimState.els[key];
+          if (freshCapture && lastCapture.color === color && lastCapture.pawnIndex === pawnIndex) {
+            animateCaptureOut(existing);
+          } else {
+            existing.remove();
+          }
+        }
+        delete _pawnAnimState.positions[key];
+        return;
+      }
+      seen.add(key);
+      const target = cellForColor(board, color, pos);
+      let outer = _pawnAnimState.els[key];
+      const prevPos = _pawnAnimState.positions[key];
+
+      if (!outer) {
+        // first time this pawn appears (e.g. just entered) — place directly
+        outer = document.createElementNS(ns, "g");
+        outer.setAttribute("class", "pawn");
+        outer.setAttribute("data-color", color);
+        outer.setAttribute("data-pawn-index", pawnIndex);
+        outer.appendChild(buildPawnGroup(color, pawnIndex, capR));
+        outer.setAttribute("transform", `translate(${target.x},${target.y})`);
+        svg.appendChild(outer);
+        _pawnAnimState.els[key] = outer;
+        _pawnAnimState.positions[key] = pos;
+        return;
+      }
+
+      if (prevPos === pos) return; // unchanged, nothing to do
+      _pawnAnimState.positions[key] = pos;
+
+      const gen = (outer.__animGen || 0) + 1;
+      outer.__animGen = gen;
+
+      const isSwapPart = freshSwap && lastSwap && lastSwap.id === _pawnAnimState.lastSwapId &&
+        ((lastSwap.a.color === color && lastSwap.a.pawnIndex === pawnIndex) ||
+         (lastSwap.b.color === color && lastSwap.b.pawnIndex === pawnIndex));
+
+      if (isSwapPart) {
+        const fromXY = cellForColor(board, color, prevPos);
+        animateSwapArc(outer, fromXY, target, gen);
+      } else {
+        const path = pathForAnimation(color, prevPos, pos);
+        if (path && path.length > 0) {
+          animateAlongPath(outer, board, path, color, stepMs, gen);
+        } else {
+          outer.setAttribute("transform", `translate(${target.x},${target.y})`);
+        }
+      }
+    });
+  }
+
+  // clean up any leftover elements for pawns no longer present (shouldn't
+  // normally happen since the -1 branch above already handles it, but keep
+  // this as a safety net e.g. after a full board reset)
+  for (const key of Object.keys(_pawnAnimState.els)) {
+    if (!seen.has(key)) {
+      _pawnAnimState.els[key].remove();
+      delete _pawnAnimState.els[key];
+      delete _pawnAnimState.positions[key];
+    }
+  }
+}
+
+</script>
+<script>
+// ============================================================
+// App principale: lobby, scambio carte, schermata di gioco.
+// ============================================================
+
+let myColor = null;
+let myRoomId = null;
+let myName = null;
+let boardSvg = null;
+let currentState = null;
+let sevenAllocation = null; // {pawnIndex: steps} while the 7-splitter is open
+let jackPicked = []; // selected {color,pawnIndex} while the Jack picker is open
+
+const $ = (sel) => document.querySelector(sel);
+
+function el(tag, props, ...children) {
+  const e = document.createElement(tag);
+  Object.entries(props || {}).forEach(([k, v]) => {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "disabled") {
+      if (v) e.setAttribute("disabled", "");
+    } else e.setAttribute(k, v);
+  });
+  children.flat().forEach((c) => {
+    if (typeof c === "string") e.appendChild(document.createTextNode(c));
+    else if (c) e.appendChild(c);
+  });
+  return e;
+}
+
+// ---------------- Lobby ----------------
+
+function renderLobby() {
+  const root = $("#app");
+  root.innerHTML = "";
+
+  const roomInput = el("input", {
+    id: "room-input",
+    placeholder: "codice stanza (es. TORVA1)",
+    value: myRoomId || "",
+  });
+
+  const nameInput = el("input", {
+    id: "name-input",
+    placeholder: "il tuo nome",
+    value: myName || "",
+  });
+
+  const colorRow = el(
+    "div",
+    { class: "color-row" },
+    COLORS.map((c) =>
+      el("button", {
+        class: "color-btn color-" + c,
+        onclick: () => selectColor(c),
+        "data-color": c,
+      }, colorLabel(c))
+    )
+  );
+
+  root.appendChild(
+    el(
+      "div",
+      { class: "lobby-card" },
+      el("h1", {}, "Tock"),
+      el("p", { class: "muted" }, "Inserisci il codice stanza, il tuo nome e scegli il tuo colore."),
+      roomInput,
+      nameInput,
+      colorRow,
+      el("p", { class: "muted teams-hint" },
+        "Squadre: 🔴 Rosso + 🟡 Giallo (basi opposte) contro 🟢 Verde + 🔵 Blu (basi opposte)."),
+      el("button", { id: "join-btn", class: "primary", onclick: joinRoom }, "Entra nella stanza"),
+      homeScreenHint()
+    )
+  );
+}
+
+function homeScreenHint() {
+  if (localStorage.getItem("tock-hide-a2hs") === "1") return "";
+  const box = el(
+    "div",
+    { class: "a2hs-hint" },
+    el("span", {}, "💡 Consiglio: apri il menu Condividi del browser e scegli \"Aggiungi a schermata Home\" per aprire il gioco a schermo intero come un'app."),
+    el("button", { class: "a2hs-close", onclick: (e) => { localStorage.setItem("tock-hide-a2hs", "1"); e.target.closest(".a2hs-hint").remove(); } }, "✕")
+  );
+  return box;
+}
+
+function colorLabel(c) {
+  return { red: "Rosso", green: "Verde", yellow: "Giallo", blue: "Blu" }[c];
+}
+function colorEmoji(c) {
+  return { red: "🔴", green: "🟢", yellow: "🟡", blue: "🔵" }[c];
+}
+
+// Prefer the name the player chose when joining; fall back to the plain
+// color label if none was set (e.g. an older game, or left blank).
+function playerName(state, c) {
+  const n = state && state.players && state.players[c] && state.players[c].name;
+  return n && n.trim() ? n.trim() : colorLabel(c);
+}
+
+function selectColor(c) {
+  myColor = c;
+  document.querySelectorAll(".color-btn").forEach((b) => b.classList.remove("selected"));
+  document.querySelector(`.color-${c}`).classList.add("selected");
+}
+
+async function joinRoom() {
+  const roomId = $("#room-input").value.trim().toUpperCase();
+  const name = $("#name-input").value.trim();
+  if (!roomId) return alert("Inserisci un codice stanza.");
+  if (!myColor) return alert("Scegli un colore.");
+  myRoomId = roomId;
+  myName = name || colorLabel(myColor);
+
+  const ref = roomRef(roomId);
+  const snap = await ref.get();
+  const myToken = getOrCreateClaimToken(roomId, myColor);
+
+  if (!snap.exists()) {
+    const players = {};
+    players[myColor] = { name: myName, token: myToken };
+    const state = newGameState(players);
+    await writeState(roomId, state);
+  } else {
+    const existing = snap.val().players && snap.val().players[myColor];
+    const sameName = existing && existing.name && myName &&
+      existing.name.trim().toLowerCase() === myName.trim().toLowerCase();
+    if (existing && existing.token && existing.token !== myToken && !sameName) {
+      alert(`Il colore ${colorLabel(myColor)} è già stato scelto da ${existing.name || colorLabel(myColor)} in questa stanza. Scegline un altro, oppure rientra usando esattamente lo stesso nome per riprenderlo.`);
+      return;
+    }
+    await ref.child("players").child(myColor).set({ name: myName, token: myToken });
+  }
+
+  watchRoom(roomId, onStateChange);
+  renderGameShell();
+}
+
+// A color, once claimed in a room, stays claimed by the same device/browser
+// (matched via a random token saved in localStorage) so it can always be
+// rejoined, while a different device trying to grab an already-taken color
+// gets blocked instead of silently stealing the seat.
+function getOrCreateClaimToken(roomId, color) {
+  const key = "tock-claim-" + roomId + "-" + color;
+  try {
+    let token = localStorage.getItem(key);
+    if (!token) {
+      token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(key, token);
+    }
+    return token;
+  } catch (e) {
+    // localStorage unavailable (private mode, etc.) — fall back to a
+    // fresh token every time, which just means no reconnect protection.
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+}
+
+// ---------------- Game shell ----------------
+
+function renderGameShell() {
+  const root = $("#app");
+  root.innerHTML = "";
+  root.appendChild(
+    el(
+      "div",
+      { class: "game-shell" },
+      el("div", { class: "top-bar" },
+        el("span", {}, "Stanza: " + myRoomId),
+        el("span", {}, "Sei: " + colorEmoji(myColor) + " " + myName + " (" + colorLabel(myColor) + ")" +
+          " · squadra " + TEAM_LABEL[TEAM_OF[myColor]]),
+      ),
+      el("div", { id: "conn-banner" }),
+      el("div", { id: "board-wrap" }),
+      el("div", { id: "start-wrap" }),
+      el("div", { id: "exchange-wrap" }),
+      el("div", { id: "turn-indicator" }),
+      el("div", { id: "status-wrap" }),
+      el("div", { id: "hand-wrap", class: "hand-row" }),
+      el("div", { id: "picker-wrap" }),
+      el("div", { id: "chat-wrap" }),
+      el("div", { id: "log-wrap", class: "log-box" }),
+    )
+  );
+  boardSvg = buildBoardSVG($("#board-wrap"), BOARD);
+  watchConnection();
+}
+
+function watchConnection() {
+  try {
+    db.ref(".info/connected").on("value", (snap) => {
+      const banner = $("#conn-banner");
+      if (!banner) return;
+      banner.innerHTML = "";
+      if (snap.val() === false) {
+        banner.appendChild(el("div", { class: "conn-lost" }, "⚠️ Connessione persa — provo a riconnettermi..."));
+      }
+    });
+  } catch (e) {
+    // if this Firebase project doesn't have the .info path available for
+    // some reason, just skip the indicator rather than breaking the app
+    console.error(e);
+  }
+}
+
+function onStateChange(state) {
+  if (!state) return;
+  currentState = state;
+  renderStartControls(state);
+  renderExchangeControls(state);
+  renderPawns(boardSvg, BOARD, state.pawns, state.lastSwap, state.lastCapture);
+  renderTurnIndicator(state);
+  renderPlayerStatus(state);
+  renderHand(state);
+  renderChat(state);
+  renderLog(state);
+  if (state.phase === "finished") renderWinBanner(state);
+}
+
+function renderStartControls(state) {
+  const wrap = $("#start-wrap");
+  wrap.innerHTML = "";
+  if (state.phase !== "lobby") return;
+  const joined = Object.keys(state.players || {});
+  wrap.appendChild(
+    el(
+      "div",
+      { class: "start-card" },
+      el("p", {}, `Giocatori nella stanza: ${joined.map(colorLabel).join(", ") || "nessuno"}`),
+      el("p", { class: "muted" }, "Servono tutti e 4 i colori per iniziare (rosso+giallo vs verde+blu)."),
+      el("button", { class: "primary", onclick: startGame }, "Inizia partita")
+    )
+  );
+}
+
+async function startGame() {
+  try {
+    await updateState(myRoomId, (state) => {
+      if (COLORS.some((c) => !state.players[c])) throw new Error("mancano giocatori");
+      dealNewHand(state); // sets phase to "exchanging" itself
+    });
+  } catch (e) {
+    alert("Non è partita: " + e.message);
+    console.error(e);
+  }
+}
+
+// ---------------- Blind card exchange ----------------
+
+function renderExchangeControls(state) {
+  const wrap = $("#exchange-wrap");
+  wrap.innerHTML = "";
+  if (state.phase !== "exchanging") return;
+  const already = !!state.pendingExchange[myColor];
+  const partner = PARTNER_OF[myColor];
+  const doneColors = COLORS.filter((c) => !!state.pendingExchange[c]);
+  const waitingColors = COLORS.filter((c) => !state.pendingExchange[c]);
+  wrap.appendChild(
+    el(
+      "div",
+      { class: "start-card" },
+      el("p", {}, `Scambio alla cieca: scegli una carta da dare al tuo compagno (${playerName(state, partner)}).`),
+      el("p", { class: "muted" },
+        doneColors.length > 0
+          ? `Hanno già scelto: ${doneColors.map((c) => colorEmoji(c) + playerName(state, c)).join(", ")}. `
+          : "",
+        waitingColors.length > 0
+          ? `In attesa di: ${waitingColors.map((c) => colorEmoji(c) + playerName(state, c)).join(", ")}.`
+          : "Tutti pronti, avvio in corso..."
+      ),
+      already
+        ? el("p", {}, "✅ Hai già scelto la tua carta. In attesa degli altri...")
+        : el(
+            "div",
+            { class: "hand-row" },
+            state.hands[myColor].map((card) =>
+              buildCardButton(card, true, () => sendExchangeCard(card))
+            )
+          )
+    )
+  );
+}
+
+async function sendExchangeCard(card) {
+  try {
+    await updateState(myRoomId, (state) => {
+      submitExchangeCard(state, myColor, card);
+    });
+  } catch (e) {
+    alert("Errore nello scambio: " + e.message);
+  }
+}
+
+function renderPlayerStatus(state) {
+  const wrap = $("#status-wrap");
+  wrap.innerHTML = "";
+  if (state.phase !== "playing" && state.phase !== "exchanging") return;
+  const row = el("div", { class: "status-row" });
+  for (const c of COLORS) {
+    const isTurn = state.phase === "playing" && state.turnColor === c;
+    row.appendChild(
+      el(
+        "div",
+        { class: "status-chip" + (isTurn ? " status-chip-active" : "") },
+        el("span", { class: "status-name" }, playerName(state, c)),
+        miniPawnsRow(state.pawns[c], c)
+      )
+    );
+  }
+  wrap.appendChild(row);
+}
+
+// Four small dots per player, one per pawn: hollow = still in base (not in
+// play), filled = out on the board (loop or home) — shows the exact pawn
+// count at a glance instead of a text tally.
+function miniPawnsRow(pawnPositions, color) {
+  const hex = { red: "#FF2D55", green: "#00E68A", yellow: "#FFD500", blue: "#00B0FF" }[color];
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 100 22");
+  svg.setAttribute("class", "mini-pawns");
+  pawnPositions.forEach((pos, i) => {
+    const cx = 12 + i * 25;
+    const inPlay = pos !== -1;
+    const home = pos >= 1000;
+    const c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", cx);
+    c.setAttribute("cy", 11);
+    c.setAttribute("r", 8);
+    c.setAttribute("fill", inPlay ? hex : "#ffffff");
+    c.setAttribute("stroke", hex);
+    c.setAttribute("stroke-width", 2.2);
+    svg.appendChild(c);
+    if (home) {
+      const dot = document.createElementNS(ns, "circle");
+      dot.setAttribute("cx", cx);
+      dot.setAttribute("cy", 11);
+      dot.setAttribute("r", 2.6);
+      dot.setAttribute("fill", "#ffffff");
+      svg.appendChild(dot);
+    }
+  });
+  return svg;
+}
+
+// ---------------- Turn / hand ----------------
+
+function renderTurnIndicator(state) {
+  const wrap = $("#turn-indicator");
+  wrap.innerHTML = "";
+  if (state.phase !== "playing") return;
+  const active = activeColorFor(state, myColor);
+  const isMyTurn = state.turnColor === myColor;
+  wrap.appendChild(
+    el(
+      "div",
+      { class: "turn-line" + (isMyTurn ? " my-turn" : "") },
+      el("span", { class: "swatch swatch-" + state.turnColor }),
+      el("strong", {}, ` Turno di ${playerName(state, state.turnColor)}`),
+      isMyTurn
+        ? el("span", { class: "you-badge" }, active === myColor ? " (tu)" : ` — muovi le pedine di ${playerName(state, active)}`)
+        : ""
+    )
+  );
+}
+
+function renderHand(state) {
+  const wrap = $("#hand-wrap");
+  wrap.innerHTML = "";
+  if (state.phase !== "playing") return;
+  const isMyTurn = state.turnColor === myColor;
+  const hand = state.hands[myColor] || [];
+  hand.forEach((card) => {
+    const btn = buildCardButton(card, isMyTurn, () => onCardClick(card));
+    wrap.appendChild(btn);
+  });
+}
+
+const RED_SUITS = { hearts: "♥", diamonds: "♦" };
+const BLACK_SUITS = { clubs: "♣", spades: "♠" };
+
+const SUIT_NAMES = { hearts: "hearts", diamonds: "diamonds", clubs: "clubs", spades: "spades" };
+
+function suitIconSvg(suit, size) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", size);
+  svg.setAttribute("height", size);
+  const path = document.createElementNS(ns, "path");
+  const paths = {
+    hearts: "M12 21 C 6 15.5, 1.5 11.6, 1.5 7.6 C 1.5 4.3, 4 2 7 2 C 9 2, 10.8 3.1, 12 5 C 13.2 3.1, 15 2, 17 2 C 20 2, 22.5 4.3, 22.5 7.6 C 22.5 11.6, 18 15.5, 12 21 Z",
+    diamonds: "M12 1.5 L22 12 L12 22.5 L2 12 Z",
+    clubs: "M12 2.5 C14.4 2.5 16.3 4.4 16.3 6.8 C16.3 8.1 15.7 9.2 14.8 9.9 C16 9.6 17.3 9.6 18.4 10.2 C20.3 11.1 21.2 13.3 20.3 15.2 C19.4 17.1 17.2 18 15.3 17.1 C14.5 16.7 13.9 16.1 13.6 15.3 C13.8 17.2 14.4 19.1 15.4 21 L8.6 21 C9.6 19.1 10.2 17.2 10.4 15.3 C10.1 16.1 9.5 16.7 8.7 17.1 C6.8 18 4.6 17.1 3.7 15.2 C2.8 13.3 3.7 11.1 5.6 10.2 C6.7 9.6 8 9.6 9.2 9.9 C8.3 9.2 7.7 8.1 7.7 6.8 C7.7 4.4 9.6 2.5 12 2.5 Z",
+    spades: "M12 2 C12 2 4 9 4 14.5 C4 17.5 6.3 19.5 9 19.2 C10 19.1 10.9 18.7 11.5 18 C11.1 19.6 10.3 20.6 8.6 21.5 L15.4 21.5 C13.7 20.6 12.9 19.6 12.5 18 C13.1 18.7 14 19.1 15 19.2 C17.7 19.5 20 17.5 20 14.5 C20 9 12 2 12 2 Z",
+  };
+  path.setAttribute("d", paths[suit]);
+  path.setAttribute("fill", "currentColor");
+  svg.appendChild(path);
+  return svg;
+}
+
+function buildCardButton(card, enabled, onClick) {
+  const [r, s] = card.split("-");
+  const isRed = !!RED_SUITS[s];
+  const centerIcon = suitIconSvg(s, 24);
+  centerIcon.style.position = "absolute";
+  centerIcon.style.left = "50%";
+  centerIcon.style.top = "50%";
+  centerIcon.style.transform = "translate(-50%, -50%)";
+  return el(
+    "button",
+    {
+      class: "card-btn " + (isRed ? "suit-red" : "suit-black"),
+      disabled: !enabled,
+      onclick: onClick,
+    },
+    el("span", { class: "card-corner card-corner-tl" }, r),
+    centerIcon,
+    el("span", { class: "card-corner card-corner-br" }, r)
+  );
+}
+
+function cardLabel(card) {
+  const [r, s] = card.split("-");
+  const suitSym = { hearts: "♥", diamonds: "♦", clubs: "♣", spades: "♠" }[s];
+  return r + suitSym;
+}
+
+// A card is now always resolved in ONE turn: it either plays (possibly
+// after picking among several pawns / a Jack target / a 7 split), or —
+// if it genuinely has no legal use — it is burned right away. Either way
+// the turn advances by exactly one card.
+async function onCardClick(card) {
+  if (window.__debugLog) window.__debugLog("click su carta " + card);
+  const active = activeColorFor(currentState, myColor);
+  const options = legalMovesForCard(currentState, active, card);
+
+  if (options.length === 0) {
+    if (!confirm(`"${cardLabel(card)}" non ha mosse legali ora: la bruci e passi il turno?`)) return;
+    await runUpdate((state) => {
+      const a = activeColorFor(state, myColor);
+      burnOneCard(state, a, card);
+      advanceTurn(state);
+    });
+    return;
+  }
+
+  const opt = options[0];
+  if (opt.type === "jack") {
+    openJackPicker(active, card);
+    return;
+  }
+  if (opt.type === "seven") {
+    openSevenSplitter(active, card);
+    return;
+  }
+  if (options.length === 1) {
+    await playMove(active, card, opt);
+    return;
+  }
+  showPawnChoice(active, card, options);
+}
+
+function showPawnChoice(active, card, options) {
+  const wrap = $("#picker-wrap");
+  wrap.innerHTML = "";
+  wrap.appendChild(
+    el(
+      "div",
+      { class: "choice-box" },
+      el("p", {}, "Più mosse possibili con questa carta: scegli quale fare."),
+      options.map((opt) =>
+        el(
+          "button",
+          {
+            class: "secondary",
+            onclick: async () => { wrap.innerHTML = ""; await playMove(active, card, opt); },
+          },
+          optionLabel(opt)
+        )
+      )
+    )
+  );
+}
+
+function optionLabel(opt) {
+  if (opt.type === "enter") return "Fai entrare una pedina";
+  if (opt.type === "move") {
+    const dest = opt.path[opt.path.length - 1];
+    const suffix = dest >= 1000 ? " — entra in casa" : " — continua il giro";
+    return `Pedina #${opt.pawnIndex + 1}${suffix}`;
+  }
+  return "Muovi";
+}
+
+async function playMove(active, card, move) {
+  if (isSelfCapture(currentState, active, move)) {
+    if (!confirm("Questa mossa mangia una tua pedina. Confermi?")) return;
+  }
+  try {
+    await runUpdate((state) => {
+      applyMove(state, active, card, move);
+      if (state.phase !== "finished") advanceTurn(state);
+    });
+  } catch (e) {
+    alert("Errore nel salvare la mossa: " + e.message);
+    console.error(e);
+  }
+}
+
+function isSelfCapture(state, color, move) {
+  if (move.type === "move") {
+    const dest = move.path[move.path.length - 1];
+    if (dest >= 1000) return false;
+    const occ = occupantAt(state, dest);
+    return !!occ && occ.color === color && occ.pawnIndex !== move.pawnIndex;
+  }
+  if (move.type === "enter") {
+    const occ = occupantAt(state, BOARD.baseIndex[color]);
+    return !!occ && occ.color === color;
+  }
+  return false;
+}
+
+async function runUpdate(mutatorFn) {
+  try {
+    await updateState(myRoomId, mutatorFn);
+  } catch (e) {
+    alert("Errore: " + e.message);
+    console.error(e);
+    throw e;
+  }
+}
+
+// ---------------- Jack picker ----------------
+
+function openJackPicker(active, card) {
+  jackPicked = [];
+  renderJackPicker(active, card);
+}
+
+function renderJackPicker(active, card) {
+  const wrap = $("#picker-wrap");
+  wrap.innerHTML = "";
+  const targets = jackableTargets(currentState);
+  wrap.appendChild(
+    el(
+      "div",
+      { class: "choice-box" },
+      el("p", {}, `Jack: scegli due pedine da scambiare (${jackPicked.length}/2 selezionate).`),
+      targets.map((t) => {
+        const picked = jackPicked.some((p) => p.color === t.color && p.pawnIndex === t.pawnIndex);
+        return el(
+          "button",
+          {
+            class: "secondary" + (picked ? " selected" : ""),
+            onclick: () => toggleJackPick(active, card, t),
+          },
+          `${colorEmoji(t.color)} ${colorLabel(t.color)} #${t.pawnIndex + 1}`
+        );
+      }),
+      el("button", { class: "danger", onclick: () => { jackPicked = []; $("#picker-wrap").innerHTML = ""; } }, "Annulla")
+    )
+  );
+}
+
+async function toggleJackPick(active, card, target) {
+  const already = jackPicked.findIndex((p) => p.color === target.color && p.pawnIndex === target.pawnIndex);
+  if (already !== -1) jackPicked.splice(already, 1);
+  else if (jackPicked.length < 2) jackPicked.push(target);
+
+  if (jackPicked.length === 2) {
+    const [a, b] = jackPicked;
+    $("#picker-wrap").innerHTML = "";
+    jackPicked = [];
+    await playMove(active, card, { type: "jack", a, b });
+    return;
+  }
+  renderJackPicker(active, card);
+}
+
+// ---------------- Seven splitter ----------------
+
+function openSevenSplitter(active, card) {
+  const pawns = currentState.pawns[active]
+    .map((p, i) => ({ pawnIndex: i, pos: p }))
+    .filter((x) => x.pos !== -1);
+  sevenAllocation = {};
+  pawns.forEach((p) => (sevenAllocation[p.pawnIndex] = 0));
+  renderSevenSplitter(active, card, pawns);
+}
+
+function renderSevenSplitter(active, card, pawns) {
+  const wrap = $("#picker-wrap");
+  wrap.innerHTML = "";
+  const total = Object.values(sevenAllocation).reduce((a, b) => a + b, 0);
+  const remaining = 7 - total;
+  wrap.appendChild(
+    el(
+      "div",
+      { class: "choice-box" },
+      el("p", {}, `7: distribuisci 7 passi tra le tue pedine (restano ${remaining}).`),
+      pawns.map((p) =>
+        el(
+          "div",
+          { class: "seven-row" },
+          el("span", {}, `Pedina #${p.pawnIndex + 1}`),
+          el("button", { class: "secondary", onclick: () => adjustSeven(active, card, pawns, p.pawnIndex, -1) }, "−"),
+          el("span", { class: "seven-val" }, String(sevenAllocation[p.pawnIndex])),
+          el("button", { class: "secondary", onclick: () => adjustSeven(active, card, pawns, p.pawnIndex, 1) }, "+")
+        )
+      ),
+      el(
+        "button",
+        {
+          class: "primary",
+          disabled: remaining !== 0,
+          onclick: () => confirmSeven(active, card),
+        },
+        "Conferma"
+      ),
+      el("button", { class: "danger", onclick: () => { sevenAllocation = null; wrap.innerHTML = ""; } }, "Annulla")
+    )
+  );
+}
+
+function adjustSeven(active, card, pawns, pawnIndex, delta) {
+  const total = Object.values(sevenAllocation).reduce((a, b) => a + b, 0);
+  const next = sevenAllocation[pawnIndex] + delta;
+  if (next < 0) return;
+  if (delta > 0 && total >= 7) return;
+  sevenAllocation[pawnIndex] = next;
+  renderSevenSplitter(active, card, pawns);
+}
+
+async function confirmSeven(active, card) {
+  const distribution = Object.entries(sevenAllocation)
+    .map(([pawnIndex, steps]) => ({ pawnIndex: parseInt(pawnIndex, 10), steps }))
+    .filter((d) => d.steps > 0);
+  const valid = sevenValidateDistribution(currentState, active, distribution);
+  if (!valid) {
+    alert("Questa distribuzione non è valida (percorso bloccato o casella-casa occupata). Prova un'altra combinazione.");
+    return;
+  }
+  $("#picker-wrap").innerHTML = "";
+  sevenAllocation = null;
+  await playMove(active, card, { type: "seven", distribution });
+}
+
+// ---------------- Chat ----------------
+
+let chatRenderedCount = -1; // avoid re-rendering (and losing input focus) needlessly
+let chatCollapsed = false;
+let chatSeenCount = 0; // messages the user has actually looked at (chat open)
+
+function renderChat(state) {
+  const wrap = $("#chat-wrap");
+  const messages = state.chat || [];
+  if (chatRenderedCount === messages.length && wrap.dataset.collapsed === String(chatCollapsed)) return;
+  chatRenderedCount = messages.length;
+  wrap.innerHTML = "";
+  wrap.dataset.collapsed = String(chatCollapsed);
+  if (!chatCollapsed) chatSeenCount = messages.length;
+  const unread = chatCollapsed ? Math.max(0, messages.length - chatSeenCount) : 0;
+
+  const title = el(
+    "div",
+    { class: "chat-title", onclick: toggleChat },
+    el("span", {}, "💬 Chat"),
+    el(
+      "span",
+      {},
+      unread > 0 ? el("span", { class: "chat-unread" }, String(unread)) : "",
+      el("span", { style: "margin-left:6px;" }, chatCollapsed ? "▸" : "▾")
+    )
+  );
+
+  if (chatCollapsed) {
+    wrap.appendChild(el("div", { class: "chat-box" }, title));
+    return;
+  }
+
+  const list = el("div", { id: "chat-messages", class: "chat-messages" });
+  messages.forEach((m) => list.appendChild(chatLine(m)));
+
+  const input = el("input", { id: "chat-input", placeholder: "Scrivi un messaggio..." });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendChat();
+  });
+
+  wrap.appendChild(
+    el(
+      "div",
+      { class: "chat-box" },
+      title,
+      list,
+      el(
+        "div",
+        { class: "chat-input-row" },
+        input,
+        el("button", { class: "secondary", onclick: sendChat }, "Invia")
+      )
+    )
+  );
+  list.scrollTop = list.scrollHeight;
+}
+
+function toggleChat() {
+  chatCollapsed = !chatCollapsed;
+  chatRenderedCount = -1; // force a re-render
+  if (currentState) renderChat(currentState);
+}
+
+function chatLine(m) {
+  return el(
+    "div",
+    { class: "chat-line" },
+    el("span", { class: "swatch swatch-" + m.color, style: "margin-right:6px;" }),
+    el("strong", {}, playerName(currentState, m.color) + ": "),
+    el("span", {}, m.text)
+  );
+}
+
+async function sendChat() {
+  const input = $("#chat-input");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+  try {
+    await updateState(myRoomId, (state) => {
+      postChatMessage(state, myColor, text);
+    });
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ---------------- Log / win ----------------
+
+const LOG_COLORS = ["red", "green", "yellow", "blue"];
+function detectLogColor(line) {
+  for (const c of LOG_COLORS) {
+    if (line.indexOf(c) !== -1) return c;
+  }
+  return null;
+}
+
+function renderLog(state) {
+  const wrap = $("#log-wrap");
+  wrap.innerHTML = "";
+  const items = (state.log || []).slice(-8).reverse();
+  items.forEach((line) => {
+    const color = detectLogColor(line);
+    wrap.appendChild(
+      el(
+        "div",
+        { class: "log-line" },
+        color ? el("span", { class: "log-dot swatch-" + color }) : el("span", { class: "log-dot", style: "background:#cbbfa0;" }),
+        el("span", {}, line)
+      )
+    );
+  });
+}
+
+function renderWinBanner(state) {
+  const root = $("#app");
+  if (root.querySelector(".win-banner")) return;
+  const winners = COLORS.filter((c) => TEAM_OF[c] === state.winnerTeam);
+  const names = winners.map((c) => playerName(state, c)).join(" & ");
+  const banner = el(
+    "div",
+    { class: "win-banner" },
+    el("div", { class: "win-trophy" }, "🏆"),
+    el("h2", {}, `${TEAM_LABEL[state.winnerTeam]} ha vinto!`),
+    el("p", { class: "win-names" }, names),
+    el("button", { class: "primary", style: "margin-top:12px;width:auto;padding:10px 20px;", onclick: startNewGame }, "Nuova partita")
+  );
+  root.prepend(banner);
+  launchConfetti(winners);
+}
+
+async function startNewGame() {
+  try {
+    await runUpdate((state) => {
+      resetForNewGame(state);
+    });
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function launchConfetti(winnerColors) {
+  const hexOf = { red: "#FF2D55", green: "#00E68A", yellow: "#FFD500", blue: "#00B0FF" };
+  const colors = winnerColors.map((c) => hexOf[c]).concat(["#D9B65C", "#ffffff"]);
+  const layer = document.createElement("div");
+  layer.className = "confetti-layer";
+  document.body.appendChild(layer);
+
+  const pieceCount = 90;
+  for (let i = 0; i < pieceCount; i++) {
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece";
+    const left = Math.random() * 100;
+    const delay = Math.random() * 0.6;
+    const duration = 2.4 + Math.random() * 1.6;
+    const size = 6 + Math.random() * 7;
+    const rotStart = Math.random() * 360;
+    const drift = (Math.random() - 0.5) * 140;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const round = Math.random() < 0.5;
+    piece.style.left = left + "vw";
+    piece.style.width = size + "px";
+    piece.style.height = (round ? size : size * 1.5) + "px";
+    piece.style.background = color;
+    piece.style.borderRadius = round ? "50%" : "2px";
+    piece.style.animationDelay = delay + "s";
+    piece.style.animationDuration = duration + "s";
+    piece.style.setProperty("--drift", drift + "px");
+    piece.style.setProperty("--rot0", rotStart + "deg");
+    layer.appendChild(piece);
+  }
+  setTimeout(() => layer.remove(), 4800);
+}
+
+// ---------------- boot ----------------
+
+window.addEventListener("DOMContentLoaded", () => {
+  installDebugPanel();
+  initFirebase();
+  renderLobby();
+});
+
+function installDebugPanel() {
+  const panel = document.createElement("div");
+  panel.id = "debug-panel";
+  panel.style.cssText =
+    "position:fixed;top:0;left:0;right:0;z-index:9999;background:#c0392b;color:#fff;" +
+    "font-size:12px;padding:6px 10px;display:none;max-height:40vh;overflow-y:auto;white-space:pre-wrap;";
+  document.body.appendChild(panel);
+  function showError(msg) {
+    panel.style.background = "#c0392b";
+    panel.style.display = "block";
+    panel.textContent = "ERRORE: " + msg;
+  }
+  window.addEventListener("error", (e) => {
+    showError((e.message || "errore sconosciuto") + " (" + (e.filename || "") + ":" + (e.lineno || "") + ")");
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    showError("promise non gestita: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+  });
+  window.__debugLog = function (msg) {
+    panel.style.background = "#2c7a3d";
+    panel.style.display = "block";
+    panel.textContent = "DEBUG: " + msg;
+  };
+}
+
+</script>
 </body>
 </html>
