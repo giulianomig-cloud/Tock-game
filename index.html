@@ -14,7 +14,7 @@
   --gold-deep: #b8912f;
   --red: #ff2d55;
   --green: #00e68a;
-  --yellow: #ffd500;
+  --yellow: #f0a500;
   --blue: #00b0ff;
 }
 
@@ -205,25 +205,19 @@ button.danger {
 }
 
 .picker-overlay {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5000;
-  display: flex;
-  justify-content: center;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, rgba(58,43,34,0) 0%, rgba(42,31,24,0.97) 30%);
-  pointer-events: none;
+  /* No longer fixed/floating — this keeps it in its normal place in the
+     page (after the board), so it can never cover the board. It's
+     scrolled into view automatically instead (see openPicker in app.js). */
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 4px;
+  margin-bottom: 10px;
 }
 .picker-overlay .choice-box {
-  max-width: 460px;
-  width: 100%;
   max-height: 46vh;
   overflow-y: auto;
   margin-top: 0;
-  box-shadow: 0 -6px 24px rgba(0,0,0,0.5);
-  pointer-events: auto;
 }
 
 button.secondary.selected {
@@ -1051,6 +1045,15 @@ const BOARD = {
 const COLORS = ["red", "green", "yellow", "blue"];
 const TEAM_OF = { red: "A", yellow: "A", green: "B", blue: "B" };
 const TEAM_LABEL = { A: "Rosso + Giallo", B: "Verde + Blu" };
+const ITALIAN_COLOR = { red: "Rosso", green: "Verde", yellow: "Giallo", blue: "Blu" };
+function cn(color) { return ITALIAN_COLOR[color] || color; }
+const SUIT_SYMBOL = { hearts: "♥", diamonds: "♦", clubs: "♣", spades: "♠" };
+// Card as shown in the log — e.g. "3-clubs" -> "3♣" — instead of the raw
+// internal code, which isn't meaningful to read back.
+function cardLog(card) {
+  const [r, s] = card.split("-");
+  return r + (SUIT_SYMBOL[s] || "");
+}
 const PARTNER_OF = { red: "yellow", yellow: "red", green: "blue", blue: "green" };
 const NEXT_COLOR = { red: "green", green: "yellow", yellow: "blue", blue: "red" };
 
@@ -1184,7 +1187,7 @@ function dealNewHand(state) {
 
   state.phase = "exchanging";
   state.pendingExchange = { red: null, green: null, yellow: null, blue: null };
-  state.log.push(`Nuova mano distribuita (mazziere: ${state.dealerColor}). In attesa dello scambio tra compagni.`);
+  state.log.push(`Nuova mano distribuita (mazziere: ${cn(state.dealerColor)}). In attesa dello scambio tra compagni.`);
 }
 
 // A player submits one card, face-down, to give to their partner.
@@ -1196,7 +1199,7 @@ function submitExchangeCard(state, color, card) {
   if (ci === -1) throw new Error("carta non trovata in mano");
   hand.splice(ci, 1);
   state.pendingExchange[color] = card;
-  state.log.push(`${color} ha scelto la carta da scambiare.`);
+  state.log.push(`${cn(color)} ha scelto la carta da scambiare.`);
 
   const allSubmitted = COLORS.every((c) => state.pendingExchange[c]);
   if (allSubmitted) {
@@ -1423,7 +1426,7 @@ function applyJackSwap(state, a, b) {
   const posB = state.pawns[b.color][b.pawnIndex];
   state.pawns[a.color][a.pawnIndex] = posB;
   state.pawns[b.color][b.pawnIndex] = posA;
-  state.log.push(`scambio (Jack) tra ${a.color}#${a.pawnIndex + 1} e ${b.color}#${b.pawnIndex + 1}.`);
+  state.log.push(`scambio (Jack) tra ${cn(a.color)}#${a.pawnIndex + 1} (${posLabel(a.color, posA)}→${posLabel(a.color, posB)}) e ${cn(b.color)}#${b.pawnIndex + 1} (${posLabel(b.color, posB)}→${posLabel(b.color, posA)}).`);
   // recorded so every client can flash/highlight the swap on the board
   state.lastSwap = {
     id: (state.lastSwap && state.lastSwap.id ? state.lastSwap.id : 0) + 1,
@@ -1574,19 +1577,22 @@ function applySevenDistribution(state, color, distribution) {
   const paths = sevenValidateDistribution(state, color, distribution);
   if (!paths) throw new Error("distribuzione del 7 non valida");
   const order = paths.__order;
+  const moves = [];
   for (const pawnIndex of order) {
     const path = paths[pawnIndex];
     const dest = path[path.length - 1];
+    const oldPos = state.pawns[color][pawnIndex];
     if (dest < 1000) {
       const occ = occupantAt(state, dest);
       if (occ) {
         recordCapture(state, occ, dest);
-        state.log.push(`${color} mangia ${occ.color} con parte del 7.`);
+        state.log.push(`${cn(color)} mangia ${cn(occ.color)} con parte del 7.`);
       }
     }
     state.pawns[color][pawnIndex] = dest;
+    moves.push(`#${pawnIndex + 1} ${posLabel(color, oldPos)}→${posLabel(color, dest)}`);
   }
-  state.log.push(`${color} gioca il 7 (${order.length} pedina/e).`);
+  state.log.push(`${cn(color)} gioca il 7 (${moves.join("; ")}).`);
   checkWin(state);
 }
 
@@ -1610,6 +1616,18 @@ function anyLegalMove(state, color) {
   return false;
 }
 
+// Human-friendly position label: describes a loop cell as "N caselle
+// prima/dopo la base di <color>" — directly countable on the physical
+// board — instead of a raw internal index nobody can cross-check.
+function posLabel(color, pos) {
+  if (pos === -1) return "base";
+  if (pos >= 1000) return `casa#${pos - 1000 + 1}`;
+  const stepsBefore = (64 - stepsFromOwnBase(color, pos)) % 64; // 0 = on the base itself
+  if (stepsBefore === 0) return `sulla base di ${cn(color)}`;
+  if (stepsBefore <= 32) return `${stepsBefore} caselle prima della base di ${cn(color)}`;
+  return `${64 - stepsBefore} caselle dopo la base di ${cn(color)}`;
+}
+
 function applyMove(state, color, card, move) {
   const hand = state.hands[color];
   const ci = hand.indexOf(card);
@@ -1620,10 +1638,10 @@ function applyMove(state, color, card, move) {
     const occ = occupantAt(state, baseIdx);
     if (occ) {
       recordCapture(state, occ, baseIdx);
-      state.log.push(`${occ.color} mangiata sulla base da ${color} che entra.`);
+      state.log.push(`${cn(occ.color)} mangiata sulla base da ${cn(color)} che entra.`);
     }
     state.pawns[color][move.pawnIndex] = baseIdx;
-    state.log.push(`${color} fa entrare una pedina con ${card}.`);
+    state.log.push(`${cn(color)} #${move.pawnIndex + 1} fa entrare una pedina con ${cardLog(card)} (→ ${posLabel(color, baseIdx)}).`);
     return;
   }
 
@@ -1634,11 +1652,11 @@ function applyMove(state, color, card, move) {
       const occ = occupantAt(state, dest);
       if (occ) {
         recordCapture(state, occ, dest);
-        state.log.push(`${color} mangia ${occ.color} con ${card}.`);
+        state.log.push(`${cn(color)} mangia ${cn(occ.color)} con ${cardLog(card)}.`);
       }
     }
     state.pawns[color][move.pawnIndex] = dest;
-    state.log.push(`${color} muove con ${card}.`);
+    state.log.push(`${cn(color)} #${move.pawnIndex + 1} muove con ${cardLog(card)}: ${posLabel(color, oldPos)} → ${posLabel(color, dest)}.`);
     // if the path swung past this pawn's own base without turning into
     // its home stretch, say so explicitly — and be precise about WHY:
     // either the number genuinely didn't match any home cell, or it did
@@ -1659,14 +1677,14 @@ function applyMove(state, color, card, move) {
         const blocker = mid.map((p) => (p < 1000 ? occupantAt(state, p) : null)).find((o) => o);
         const finalDest = homePath[homePath.length - 1];
         if (blocker) {
-          reason = `il percorso era bloccato da ${blocker.color} #${blocker.pawnIndex + 1} sulla casella ${mid.find((p) => p < 1000 && occupantAt(state, p) === blocker)}.`;
+          reason = `il percorso era bloccato da ${cn(blocker.color)} #${blocker.pawnIndex + 1} sulla casella ${mid.find((p) => p < 1000 && occupantAt(state, p) === blocker)}.`;
         } else if (finalDest >= 1000 && homeOccupant(state, color, finalDest - 1000) !== -1) {
           reason = `la casella-casa di destinazione era già occupata da una tua pedina.`;
         } else {
           reason = `motivo non identificato (segnalalo: partenza a ${distanceToBase} passi dalla base, numero ${steps}).`;
         }
       }
-      state.log.push(`(${color} #${move.pawnIndex + 1} ha superato la propria base senza entrare in casa — ${reason})`);
+      state.log.push(`(${cn(color)} #${move.pawnIndex + 1} ha superato la propria base senza entrare in casa — ${reason})`);
     }
     checkWin(state);
     return;
@@ -1690,7 +1708,7 @@ function checkWin(state) {
     if (allHome) {
       state.winnerTeam = team;
       state.phase = "finished";
-      state.log.push(`La coppia ${team} vince la partita!`);
+      state.log.push(`La coppia ${TEAM_LABEL[team]} vince la partita!`);
     }
   }
 }
@@ -1719,7 +1737,7 @@ function burnOneCard(state, color, card) {
   const hand = state.hands[color];
   const ci = hand.indexOf(card);
   if (ci !== -1) hand.splice(ci, 1);
-  state.log.push(`${color} brucia ${card} (nessuna mossa).`);
+  state.log.push(`${cn(color)} brucia ${cardLog(card)} (nessuna mossa).`);
 }
 
 function advanceTurn(state) {
@@ -1832,7 +1850,7 @@ async function updateState(roomId, mutatorFn) {
 const BASE_COL = {
   red: "#FF2D55",
   green: "#00E68A",
-  yellow: "#FFD500",
+  yellow: "#F0A500",
   blue: "#00B0FF",
 };
 const PAWN_RING = "#3A2B22";
@@ -2753,7 +2771,7 @@ function renderPlayerStatus(state) {
 // play), filled = out on the board (loop or home) — shows the exact pawn
 // count at a glance instead of a text tally.
 function miniPawnsRow(pawnPositions, color) {
-  const hex = { red: "#FF2D55", green: "#00E68A", yellow: "#FFD500", blue: "#00B0FF" }[color];
+  const hex = { red: "#FF2D55", green: "#00E68A", yellow: "#F0A500", blue: "#00B0FF" }[color];
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 100 22");
@@ -2909,6 +2927,7 @@ function openPicker(contentEl) {
   wrap.innerHTML = "";
   wrap.className = "picker-overlay";
   wrap.appendChild(contentEl);
+  wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 function closePicker() {
   const wrap = $("#picker-wrap");
@@ -3189,7 +3208,7 @@ async function sendChat() {
 const LOG_COLORS = ["red", "green", "yellow", "blue"];
 function detectLogColor(line) {
   for (const c of LOG_COLORS) {
-    if (line.indexOf(c) !== -1) return c;
+    if (line.indexOf(colorLabel(c)) !== -1) return c;
   }
   return null;
 }
@@ -3240,10 +3259,10 @@ function downloadDebugDump(state) {
   lines.push("");
   lines.push("=== STATO ATTUALE ===");
   lines.push(`Fase: ${state.phase}`);
-  lines.push(`Turno: ${state.turnColor || "-"}`);
+  lines.push(`Turno: ${state.turnColor ? colorLabel(state.turnColor) : "-"}`);
   for (const c of COLORS) {
     const name = playerName(state, c);
-    lines.push(`${c} (${name}): pedine=${JSON.stringify(state.pawns[c])} mano=${JSON.stringify(state.hands[c])}`);
+    lines.push(`${colorLabel(c)} (${name}): pedine=${JSON.stringify(state.pawns[c])} mano=${JSON.stringify(state.hands[c])}`);
   }
   lines.push("");
   lines.push("=== REGISTRO MOSSE (in ordine) ===");
@@ -3293,7 +3312,7 @@ async function startNewGame() {
 }
 
 function launchConfetti(winnerColors) {
-  const hexOf = { red: "#FF2D55", green: "#00E68A", yellow: "#FFD500", blue: "#00B0FF" };
+  const hexOf = { red: "#FF2D55", green: "#00E68A", yellow: "#F0A500", blue: "#00B0FF" };
   const colors = winnerColors.map((c) => hexOf[c]).concat(["#D9B65C", "#ffffff"]);
   const layer = document.createElement("div");
   layer.className = "confetti-layer";
