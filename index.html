@@ -13,10 +13,10 @@
   --gold: #d9b65c;
   --gold-deep: #b8912f;
   --gold-metallic: linear-gradient(135deg, #f6e2a0 0%, #d9b65c 35%, #a97c28 60%, #eecf85 100%);
-  --red: #c6373f;
-  --green: #1b8a6b;
-  --yellow: #d99a2b;
-  --blue: #1b6fa8;
+  --red: #ff2d55;
+  --green: #00e68a;
+  --yellow: #cc8400;
+  --blue: #00b0ff;
 }
 
 * { box-sizing: border-box; }
@@ -65,7 +65,7 @@ h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--ink); }
 }
 .color-red { background: var(--red); }
 .color-green { background: var(--green); }
-.color-yellow { background: var(--yellow); color: var(--ink); }
+.color-yellow { background: var(--yellow); color: white; }
 .color-blue { background: var(--blue); }
 .color-btn.selected { border-color: var(--ink); transform: scale(0.97); }
 
@@ -1045,8 +1045,8 @@ const BOARD = {
 
 const COLORS = ["red", "green", "yellow", "blue"];
 const TEAM_OF = { red: "A", yellow: "A", green: "B", blue: "B" };
-const TEAM_LABEL = { A: "Rosso + Giallo", B: "Verde + Blu" };
-const ITALIAN_COLOR = { red: "Rosso", green: "Verde", yellow: "Giallo", blue: "Blu" };
+const TEAM_LABEL = { A: "Rosso + Ocra", B: "Verde + Blu" };
+const ITALIAN_COLOR = { red: "Rosso", green: "Verde", yellow: "Ocra", blue: "Blu" };
 function cn(color) { return ITALIAN_COLOR[color] || color; }
 const SUIT_SYMBOL = { hearts: "♥", diamonds: "♦", clubs: "♣", spades: "♠" };
 // Card as shown in the log — e.g. "3-clubs" -> "3♣" — instead of the raw
@@ -1849,10 +1849,10 @@ async function updateState(roomId, mutatorFn) {
 // ============================================================
 
 const BASE_COL = {
-  red: "#C6373F",
-  green: "#1B8A6B",
-  yellow: "#D99A2B",
-  blue: "#1B6FA8",
+  red: "#FF2D55",
+  green: "#00E68A",
+  yellow: "#CC8400",
+  blue: "#00B0FF",
 };
 const PAWN_RING = "#3A2B22";
 
@@ -2547,7 +2547,7 @@ function renderLobby() {
       nameInput,
       colorRow,
       el("p", { class: "muted teams-hint" },
-        "Squadre: 🔴 Rosso + 🟡 Giallo (basi opposte) contro 🟢 Verde + 🔵 Blu (basi opposte)."),
+        "Squadre: 🔴 Rosso + 🟤 Ocra (basi opposte) contro 🟢 Verde + 🔵 Blu (basi opposte)."),
       el("button", { id: "join-btn", class: "primary", onclick: joinRoom }, "Entra nella stanza"),
       homeScreenHint()
     )
@@ -2566,10 +2566,10 @@ function homeScreenHint() {
 }
 
 function colorLabel(c) {
-  return { red: "Rosso", green: "Verde", yellow: "Giallo", blue: "Blu" }[c];
+  return { red: "Rosso", green: "Verde", yellow: "Ocra", blue: "Blu" }[c];
 }
 function colorEmoji(c) {
-  return { red: "🔴", green: "🟢", yellow: "🟡", blue: "🔵" }[c];
+  return { red: "🔴", green: "🟢", yellow: "🟤", blue: "🔵" }[c];
 }
 
 // Prefer the name the player chose when joining; fall back to the plain
@@ -2795,7 +2795,7 @@ function renderPlayerStatus(state) {
 // play), filled = out on the board (loop or home) — shows the exact pawn
 // count at a glance instead of a text tally.
 function miniPawnsRow(pawnPositions, color) {
-  const hex = { red: "#C6373F", green: "#1B8A6B", yellow: "#D99A2B", blue: "#1B6FA8" }[color];
+  const hex = { red: "#FF2D55", green: "#00E68A", yellow: "#CC8400", blue: "#00B0FF" }[color];
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 100 22");
@@ -3350,7 +3350,7 @@ async function startNewGame() {
 }
 
 function launchConfetti(winnerColors) {
-  const hexOf = { red: "#C6373F", green: "#1B8A6B", yellow: "#D99A2B", blue: "#1B6FA8" };
+  const hexOf = { red: "#FF2D55", green: "#00E68A", yellow: "#CC8400", blue: "#00B0FF" };
   const colors = winnerColors.map((c) => hexOf[c]).concat(["#D9B65C", "#ffffff"]);
   const layer = document.createElement("div");
   layer.className = "confetti-layer";
