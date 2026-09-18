@@ -2038,8 +2038,8 @@ function buildBoardSVG(containerEl, board) {
   function cell(cx, cy, r, fillId, strokeW) {
     const g = ns_el("g", {});
     g.appendChild(ns_el("circle", { cx: cx + 0.9, cy: cy + 1.4, r, fill: "#22140a", opacity: 0.28 }));
-    g.appendChild(ns_el("circle", { cx, cy, r: r + 0.6, fill: "none", stroke: "#fff", "stroke-width": 0.8, opacity: 0.35 }));
-    g.appendChild(ns_el("circle", { cx, cy, r, fill: `url(#${fillId})`, stroke: PAWN_RING, "stroke-width": strokeW }));
+    g.appendChild(ns_el("circle", { cx, cy, r, fill: `url(#${fillId})`, stroke: "#fffaf0", "stroke-width": 3.4 }));
+    g.appendChild(ns_el("circle", { cx, cy, r: r - 2.4, fill: "none", stroke: PAWN_RING, "stroke-width": strokeW, opacity: 0.5 }));
     g.appendChild(ns_el("ellipse", {
       cx: cx - r * 0.3, cy: cy - r * 0.36, rx: r * 0.36, ry: r * 0.24, fill: "#ffffff", opacity: 0.55,
     }));
