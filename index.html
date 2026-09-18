@@ -12,10 +12,11 @@
   --panel-border: #e0c98f;
   --gold: #d9b65c;
   --gold-deep: #b8912f;
-  --red: #ff2d55;
-  --green: #00e68a;
+  --gold-metallic: linear-gradient(135deg, #f6e2a0 0%, #d9b65c 35%, #a97c28 60%, #eecf85 100%);
+  --red: #e8264a;
+  --green: #00b36b;
   --yellow: #f0a500;
-  --blue: #00b0ff;
+  --blue: #0090d9;
 }
 
 * { box-sizing: border-box; }
@@ -180,7 +181,7 @@ button.danger {
 .card-btn.suit-red { color: #c81e3f; }
 .card-btn.suit-black { color: #16110c; }
 .card-btn:disabled { opacity: 0.4; cursor: default; }
-.card-btn.selected { background: var(--gold); }
+.card-btn.selected { background: var(--gold-metallic); }
 
 .card-corner {
   position: absolute;
@@ -221,7 +222,7 @@ button.danger {
 }
 
 button.secondary.selected {
-  background: var(--gold);
+  background: var(--gold-metallic);
   border-color: var(--ink);
 }
 
@@ -326,14 +327,14 @@ button.secondary.selected {
   background: #fffaf0;
 }
 .chat-input-row button.secondary {
-  background: var(--gold);
+  background: var(--gold-metallic);
   border-color: var(--gold-deep);
   font-weight: 700;
   color: var(--ink);
 }
 
 .win-banner {
-  background: linear-gradient(180deg, #f0d98c, var(--gold));
+  background: var(--gold-metallic);
   color: var(--ink);
   text-align: center;
   padding: 22px 14px;
@@ -1848,10 +1849,10 @@ async function updateState(roomId, mutatorFn) {
 // ============================================================
 
 const BASE_COL = {
-  red: "#FF2D55",
-  green: "#00E68A",
+  red: "#E8264A",
+  green: "#00B36B",
   yellow: "#F0A500",
-  blue: "#00B0FF",
+  blue: "#0090D9",
 };
 const PAWN_RING = "#3A2B22";
 
@@ -1910,6 +1911,15 @@ function buildBoardSVG(containerEl, board) {
   });
   defs.appendChild(bg);
 
+  // Subtle wood-grain texture overlay — fine anisotropic noise streaks,
+  // very low opacity, laid on top of the background gradient.
+  const grain = ns_el("filter", { id: "wood-grain", x: "-5%", y: "-5%", width: "110%", height: "110%" });
+  grain.appendChild(ns_el("feTurbulence", {
+    type: "fractalNoise", baseFrequency: "0.012 0.18", numOctaves: 3, seed: 7, result: "noise",
+  }));
+  grain.appendChild(ns_el("feColorMatrix", { in: "noise", type: "matrix", values: "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0" }));
+  defs.appendChild(grain);
+
   for (const color of board.order) {
     const hex = BASE_COL[color];
     const g = ns_el("radialGradient", { id: "cell-" + color, cx: "32%", cy: "28%", r: "78%" });
@@ -1960,6 +1970,9 @@ function buildBoardSVG(containerEl, board) {
 
   // ---- background ----
   svg.appendChild(ns_el("rect", { x: 0, y: 0, width: S, height: S, rx: 16, fill: "url(#bg-grad)" }));
+  svg.appendChild(ns_el("rect", {
+    x: 0, y: 0, width: S, height: S, rx: 16, fill: "#3a2412", opacity: 0.14, filter: "url(#wood-grain)",
+  }));
 
   function line(x1, y1, x2, y2) {
     return ns_el("line", {
@@ -2146,9 +2159,16 @@ function buildPawnGroup(color, pawnIndex, capR) {
   g.appendChild(ns_el("path", {
     d: outline, transform: `translate(1.4,2.2)`, fill: "#000000", opacity: 0.45,
   }));
-  g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 1.14, fill: "none", stroke: "#fffaf0", "stroke-width": 3.2 }));
+  // The white ring's dash pattern differs per color — a second cue beyond
+  // hue alone, helpful for colorblind players (solid/dashed/dotted/dash-dot).
+  const RING_DASH = { red: null, green: "7,3.5", yellow: "1.8,3.2", blue: "7,2,1.8,2" };
+  const dash = RING_DASH[color];
+  g.appendChild(ns_el("circle", Object.assign(
+    { cx: 0, cy: 0, r: capR * 1.14, fill: "none", stroke: "#fffaf0", "stroke-width": 3.2 },
+    dash ? { "stroke-dasharray": dash } : {}
+  )));
   g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 1.14, fill: "none", stroke: "#22140a", "stroke-width": 1, opacity: 0.5 }));
-  const cap = ns_el("path", { d: outline, fill: BASE_COL[color], stroke: "#140c07", "stroke-width": 2.1 });
+  const cap = ns_el("path", { d: outline, fill: BASE_COL[color], stroke: "#140c07", "stroke-width": 2.7 });
   g.appendChild(cap);
   g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 0.8, fill: "none", stroke: "#22140a", "stroke-width": 1, opacity: 0.3 }));
   g.appendChild(ns_el("path", { d: outline, fill: "url(#cap-sheen)" }));
@@ -2771,7 +2791,7 @@ function renderPlayerStatus(state) {
 // play), filled = out on the board (loop or home) — shows the exact pawn
 // count at a glance instead of a text tally.
 function miniPawnsRow(pawnPositions, color) {
-  const hex = { red: "#FF2D55", green: "#00E68A", yellow: "#F0A500", blue: "#00B0FF" }[color];
+  const hex = { red: "#E8264A", green: "#00B36B", yellow: "#F0A500", blue: "#0090D9" }[color];
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 100 22");
@@ -3312,7 +3332,7 @@ async function startNewGame() {
 }
 
 function launchConfetti(winnerColors) {
-  const hexOf = { red: "#FF2D55", green: "#00E68A", yellow: "#F0A500", blue: "#00B0FF" };
+  const hexOf = { red: "#E8264A", green: "#00B36B", yellow: "#F0A500", blue: "#0090D9" };
   const colors = winnerColors.map((c) => hexOf[c]).concat(["#D9B65C", "#ffffff"]);
   const layer = document.createElement("div");
   layer.className = "confetti-layer";
