@@ -13,10 +13,10 @@
   --gold: #d9b65c;
   --gold-deep: #b8912f;
   --gold-metallic: linear-gradient(135deg, #f6e2a0 0%, #d9b65c 35%, #a97c28 60%, #eecf85 100%);
-  --red: #e8264a;
-  --green: #00b36b;
-  --yellow: #f0a500;
-  --blue: #0090d9;
+  --red: #c6373f;
+  --green: #1b8a6b;
+  --yellow: #d99a2b;
+  --blue: #1b6fa8;
 }
 
 * { box-sizing: border-box; }
@@ -1849,10 +1849,10 @@ async function updateState(roomId, mutatorFn) {
 // ============================================================
 
 const BASE_COL = {
-  red: "#E8264A",
-  green: "#00B36B",
-  yellow: "#F0A500",
-  blue: "#0090D9",
+  red: "#C6373F",
+  green: "#1B8A6B",
+  yellow: "#D99A2B",
+  blue: "#1B6FA8",
 };
 const PAWN_RING = "#3A2B22";
 
@@ -1960,10 +1960,12 @@ function buildBoardSVG(containerEl, board) {
   cream.appendChild(ns_el("stop", { offset: "100%", "stop-color": "#E9DCBE" }));
   defs.appendChild(cream);
 
-  // Used only for the plain, walkable loop cells — a deeper, more muted
-  // tone than the bright "cell-cream" reserved for base/marker/home cells,
-  // so the two categories read as visually different at a glance, not
-  // just by the colored ring alone.
+  // Used only for the plain, walkable loop cells — a recessed "carved
+  // hole in the wood" look (darker center, lighter rim), the opposite of
+  // the glossy raised look used for pawns and special cells, so the two
+  // categories read as different at a glance, not just by tone.
+  // Used for base/marker/home cells — the muted tan tone (matches the
+  // normal glossy look, not the recessed style tried earlier).
   const plain = ns_el("radialGradient", { id: "cell-plain", cx: "32%", cy: "28%", r: "78%" });
   plain.appendChild(ns_el("stop", { offset: "0%", "stop-color": "#EFE3C4" }));
   plain.appendChild(ns_el("stop", { offset: "50%", "stop-color": "#E4D3A9" }));
@@ -2035,25 +2037,26 @@ function buildBoardSVG(containerEl, board) {
     svg.appendChild(ns_el("path", { d, fill: "none", stroke: PAWN_RING, "stroke-width": 1, opacity: 0.35 }));
   });
 
-  function cell(cx, cy, r, fillId, strokeW) {
+  // Plain, walkable loop cells: a recessed "hole carved into the wood"
+  // — darker toward the center, lighter at the rim — instead of the
+  // glossy raised look used for pawns and special cells.
+  const CELL_BORDER_WIDTH = 2.2; // same thickness for every cell on the board
+
+  // Plain, walkable loop cells: bright white/cream — the default, most
+  // common cell.
+  function cell(cx, cy, r) {
     const g = ns_el("g", {});
-    g.appendChild(ns_el("circle", { cx: cx + 0.9, cy: cy + 1.4, r, fill: "#22140a", opacity: 0.28 }));
-    g.appendChild(ns_el("circle", { cx, cy, r, fill: `url(#${fillId})`, stroke: "#fffaf0", "stroke-width": 3.4 }));
-    g.appendChild(ns_el("circle", { cx, cy, r: r - 2.4, fill: "none", stroke: PAWN_RING, "stroke-width": strokeW, opacity: 0.5 }));
-    g.appendChild(ns_el("ellipse", {
-      cx: cx - r * 0.3, cy: cy - r * 0.36, rx: r * 0.36, ry: r * 0.24, fill: "#ffffff", opacity: 0.55,
-    }));
+    g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-cream)", stroke: "#8a7a5a", "stroke-width": CELL_BORDER_WIDTH }));
     return g;
   }
 
-  // Base, "-4" marker, and home cells all share this look: white/cream
-  // inside, bold colored ring — same size as every other cell, so a real
-  // pawn (filled, crowned) is unmistakably different from the empty slot.
+  // Base, "-4" marker, and home cells: the muted tan tone plus a bold
+  // colored ring — same size and border thickness as every other cell, so
+  // a real pawn (filled, crowned) is unmistakably different from the
+  // empty slot underneath it.
   function specialCell(cx, cy, r, colorHex) {
     const g = ns_el("g", {});
-    g.appendChild(ns_el("circle", { cx: cx + 0.9, cy: cy + 1.4, r, fill: "#22140a", opacity: 0.22 }));
-    g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-cream)", stroke: colorHex, "stroke-width": 3.4 }));
-    g.appendChild(ns_el("circle", { cx, cy, r: r - 2.4, fill: "none", stroke: colorHex, "stroke-width": 1, opacity: 0.5 }));
+    g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-plain)", stroke: colorHex, "stroke-width": CELL_BORDER_WIDTH }));
     return g;
   }
 
@@ -2062,7 +2065,7 @@ function buildBoardSVG(containerEl, board) {
     let g;
     if (c.isBase) g = specialCell(c.x, c.y, R, BASE_COL[c.baseColor]);
     else if (c.isMarker) g = specialCell(c.x, c.y, R, BASE_COL[c.markerColor]);
-    else g = cell(c.x, c.y, R, "cell-plain", 1.6);
+    else g = cell(c.x, c.y, R);
     g.setAttribute("data-pos", idx);
     g.setAttribute("class", "board-cell");
     svg.appendChild(g);
@@ -2792,7 +2795,7 @@ function renderPlayerStatus(state) {
 // play), filled = out on the board (loop or home) — shows the exact pawn
 // count at a glance instead of a text tally.
 function miniPawnsRow(pawnPositions, color) {
-  const hex = { red: "#E8264A", green: "#00B36B", yellow: "#F0A500", blue: "#0090D9" }[color];
+  const hex = { red: "#C6373F", green: "#1B8A6B", yellow: "#D99A2B", blue: "#1B6FA8" }[color];
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 100 22");
@@ -3347,7 +3350,7 @@ async function startNewGame() {
 }
 
 function launchConfetti(winnerColors) {
-  const hexOf = { red: "#E8264A", green: "#00B36B", yellow: "#F0A500", blue: "#0090D9" };
+  const hexOf = { red: "#C6373F", green: "#1B8A6B", yellow: "#D99A2B", blue: "#1B6FA8" };
   const colors = winnerColors.map((c) => hexOf[c]).concat(["#D9B65C", "#ffffff"]);
   const layer = document.createElement("div");
   layer.className = "confetti-layer";
