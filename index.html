@@ -1960,6 +1960,16 @@ function buildBoardSVG(containerEl, board) {
   cream.appendChild(ns_el("stop", { offset: "100%", "stop-color": "#E9DCBE" }));
   defs.appendChild(cream);
 
+  // Used only for the plain, walkable loop cells — a deeper, more muted
+  // tone than the bright "cell-cream" reserved for base/marker/home cells,
+  // so the two categories read as visually different at a glance, not
+  // just by the colored ring alone.
+  const plain = ns_el("radialGradient", { id: "cell-plain", cx: "32%", cy: "28%", r: "78%" });
+  plain.appendChild(ns_el("stop", { offset: "0%", "stop-color": "#EFE3C4" }));
+  plain.appendChild(ns_el("stop", { offset: "50%", "stop-color": "#E4D3A9" }));
+  plain.appendChild(ns_el("stop", { offset: "100%", "stop-color": "#CBB585" }));
+  defs.appendChild(plain);
+
   const capSheen = ns_el("radialGradient", { id: "cap-sheen", cx: "35%", cy: "28%", r: "75%" });
   capSheen.appendChild(ns_el("stop", { offset: "0%", "stop-color": "#ffffff", "stop-opacity": "0.32" }));
   capSheen.appendChild(ns_el("stop", { offset: "40%", "stop-color": "#ffffff", "stop-opacity": "0.04" }));
@@ -2052,7 +2062,7 @@ function buildBoardSVG(containerEl, board) {
     let g;
     if (c.isBase) g = specialCell(c.x, c.y, R, BASE_COL[c.baseColor]);
     else if (c.isMarker) g = specialCell(c.x, c.y, R, BASE_COL[c.markerColor]);
-    else g = cell(c.x, c.y, R, "cell-cream", 1.2);
+    else g = cell(c.x, c.y, R, "cell-plain", 1.6);
     g.setAttribute("data-pos", idx);
     g.setAttribute("class", "board-cell");
     svg.appendChild(g);
@@ -2159,15 +2169,6 @@ function buildPawnGroup(color, pawnIndex, capR) {
   g.appendChild(ns_el("path", {
     d: outline, transform: `translate(1.4,2.2)`, fill: "#000000", opacity: 0.45,
   }));
-  // The white ring's dash pattern differs per color — a second cue beyond
-  // hue alone, helpful for colorblind players (solid/dashed/dotted/dash-dot).
-  const RING_DASH = { red: null, green: "7,3.5", yellow: "1.8,3.2", blue: "7,2,1.8,2" };
-  const dash = RING_DASH[color];
-  g.appendChild(ns_el("circle", Object.assign(
-    { cx: 0, cy: 0, r: capR * 1.14, fill: "none", stroke: "#fffaf0", "stroke-width": 3.2 },
-    dash ? { "stroke-dasharray": dash } : {}
-  )));
-  g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 1.14, fill: "none", stroke: "#22140a", "stroke-width": 1, opacity: 0.5 }));
   const cap = ns_el("path", { d: outline, fill: BASE_COL[color], stroke: "#140c07", "stroke-width": 2.7 });
   g.appendChild(cap);
   g.appendChild(ns_el("circle", { cx: 0, cy: 0, r: capR * 0.8, fill: "none", stroke: "#22140a", "stroke-width": 1, opacity: 0.3 }));
@@ -3233,6 +3234,19 @@ function detectLogColor(line) {
   return null;
 }
 
+const OLD_SUIT_SYMBOL = { hearts: "♥", diamonds: "♦", clubs: "♣", spades: "♠" };
+
+// Old log lines (written before this update) still use the raw English
+// color keys and card codes verbatim, since a log entry is stored exactly
+// as it happened and never gets rewritten later. This translates them for
+// DISPLAY only, on the fly, so a game that started before this change
+// still reads consistently in Italian.
+function displayLogLine(line) {
+  let out = line.replace(/\b(red|green|yellow|blue)\b/g, (m) => colorLabel(m));
+  out = out.replace(/\b([2-9]|10|[AKQJ])-(hearts|diamonds|clubs|spades)\b/g, (m, rank, suit) => rank + OLD_SUIT_SYMBOL[suit]);
+  return out;
+}
+
 let logExpanded = false;
 
 function renderLog(state) {
@@ -3256,7 +3270,8 @@ function renderLog(state) {
   );
   wrap.appendChild(header);
 
-  items.forEach((line) => {
+  items.forEach((rawLine) => {
+    const line = displayLogLine(rawLine);
     const color = detectLogColor(line);
     wrap.appendChild(
       el(
@@ -3286,7 +3301,7 @@ function downloadDebugDump(state) {
   }
   lines.push("");
   lines.push("=== REGISTRO MOSSE (in ordine) ===");
-  (state.log || []).forEach((line, i) => lines.push(`${i + 1}. ${line}`));
+  (state.log || []).forEach((line, i) => lines.push(`${i + 1}. ${displayLogLine(line)}`));
 
   const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
