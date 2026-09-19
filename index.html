@@ -274,6 +274,13 @@ button.secondary.selected {
   position: sticky;
   top: 0;
   background: var(--panel);
+  cursor: pointer;
+  user-select: none;
+}
+.log-controls {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
 }
 .log-toggle {
   background: none;
@@ -1664,7 +1671,7 @@ function applyMove(state, color, card, move) {
     // match but the way in was blocked by an occupied cell/home slot
     // (named exactly, for diagnosing reports without needing screenshots).
     const baseIdx = BOARD.baseIndex[color];
-    if (dest < 1000 && move.path.includes(baseIdx)) {
+    if (dest < 1000 && dest !== baseIdx && move.path.includes(baseIdx)) {
       const steps = move.path.length;
       const stepsBefore = stepsFromOwnBase(color, oldPos);
       const distanceToBase = (64 - stepsBefore) % 64; // how many steps to reach base itself
@@ -2040,7 +2047,7 @@ function buildBoardSVG(containerEl, board) {
   // Plain, walkable loop cells: a recessed "hole carved into the wood"
   // — darker toward the center, lighter at the rim — instead of the
   // glossy raised look used for pawns and special cells.
-  const CELL_BORDER_WIDTH = 2.2; // same thickness for every cell on the board
+  const CELL_BORDER_WIDTH = 4.2; // same thickness for every cell on the board
 
   // Plain, walkable loop cells: bright white/cream — the default, most
   // common cell.
@@ -2057,6 +2064,7 @@ function buildBoardSVG(containerEl, board) {
   function specialCell(cx, cy, r, colorHex) {
     const g = ns_el("g", {});
     g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-plain)", stroke: colorHex, "stroke-width": CELL_BORDER_WIDTH }));
+    g.appendChild(ns_el("circle", { cx, cy, r: r - CELL_BORDER_WIDTH / 2 - 0.6, fill: "none", stroke: "#2a2015", "stroke-width": 0.8, opacity: 0.4 }));
     return g;
   }
 
@@ -2913,7 +2921,6 @@ function cardLabel(card) {
 // if it genuinely has no legal use — it is burned right away. Either way
 // the turn advances by exactly one card.
 async function onCardClick(card) {
-  if (window.__debugLog) window.__debugLog("click su carta " + card);
   const active = activeColorFor(currentState, myColor);
   const options = legalMovesForCard(currentState, active, card);
 
@@ -3252,27 +3259,33 @@ function displayLogLine(line) {
 
 let logExpanded = false;
 
+let logCollapsed = false;
+
 function renderLog(state) {
   const wrap = $("#log-wrap");
   wrap.innerHTML = "";
   const all = state.log || [];
-  const items = (logExpanded ? all : all.slice(-8)).slice().reverse();
 
   const header = el(
     "div",
-    { class: "log-header" },
+    { class: "log-header", onclick: toggleLogCollapsed },
     el("span", {}, `Registro (${all.length} mosse)`),
-    el(
-      "span",
-      {},
-      all.length > 8
-        ? el("button", { class: "log-toggle", onclick: toggleLog }, logExpanded ? "Mostra solo recenti" : "Mostra tutto")
-        : "",
-      el("button", { class: "log-toggle", style: "margin-left:10px;", onclick: () => downloadDebugDump(state) }, "⬇ Scarica")
-    )
+    el("span", {}, logCollapsed ? "▸" : "▾")
   );
   wrap.appendChild(header);
+  if (logCollapsed) return;
 
+  const controls = el(
+    "div",
+    { class: "log-controls" },
+    all.length > 8
+      ? el("button", { class: "log-toggle", onclick: (e) => { e.stopPropagation(); toggleLog(); } }, logExpanded ? "Mostra solo recenti" : "Mostra tutto")
+      : "",
+    el("button", { class: "log-toggle", style: "margin-left:10px;", onclick: (e) => { e.stopPropagation(); downloadDebugDump(state); } }, "⬇ Scarica")
+  );
+  wrap.appendChild(controls);
+
+  const items = (logExpanded ? all : all.slice(-8)).slice().reverse();
   items.forEach((rawLine) => {
     const line = displayLogLine(rawLine);
     const color = detectLogColor(line);
@@ -3319,6 +3332,11 @@ function downloadDebugDump(state) {
 
 function toggleLog() {
   logExpanded = !logExpanded;
+  if (currentState) renderLog(currentState);
+}
+
+function toggleLogCollapsed() {
+  logCollapsed = !logCollapsed;
   if (currentState) renderLog(currentState);
 }
 
@@ -3408,11 +3426,6 @@ function installDebugPanel() {
   window.addEventListener("unhandledrejection", (e) => {
     showError("promise non gestita: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
   });
-  window.__debugLog = function (msg) {
-    panel.style.background = "#2c7a3d";
-    panel.style.display = "block";
-    panel.textContent = "DEBUG: " + msg;
-  };
 }
 
 </script>
