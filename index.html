@@ -44,7 +44,7 @@ body {
 #app { max-width: 480px; margin: 0 auto; padding: 12px; min-height: 100vh; }
 
 h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--ink); }
-.app-version { font-size: 0.72rem; color: #a89873; margin: 0 0 10px; }
+.app-meta { font-size: 0.7rem; color: #a89873; margin: 0 0 10px; letter-spacing: 0.02em; }
 .muted { color: #7a6a55; font-size: 0.9rem; }
 
 .lobby-card, .start-card {
@@ -1114,7 +1114,7 @@ const BOARD = {
 </script>
 <script>
 // ============================================================
-// Tock Torvaianica — motore di gioco
+// Tock — motore di gioco
 // ============================================================
 
 const COLORS = ["red", "green", "yellow", "blue"];
@@ -2668,7 +2668,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 14";
+const APP_VERSION = "v1.18";
 
 let myColor = null;
 let myRoomId = null;
@@ -2731,7 +2731,7 @@ function renderLobby() {
       "div",
       { class: "lobby-card" },
       el("h1", {}, "Tock"),
-      el("p", { class: "app-version" }, `Versione: ${APP_VERSION}`),
+      el("p", { class: "app-meta" }, `by Mig · ${APP_VERSION} · © 2026 Mig`),
       el("p", { class: "muted" }, "Inserisci il codice stanza, il tuo nome e scegli il tuo colore."),
       roomInput,
       nameInput,

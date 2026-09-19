@@ -1,4 +1,4 @@
-// Service worker per Tock Torvaianica.
+// Service worker per Tock.
 //
 // IMPORTANTE: la partita è multiplayer via Firebase in tempo reale, quindi
 // la pagina DEVE sempre poter caricare l'ultima versione pubblicata — mai
@@ -9,7 +9,7 @@
 //
 // Cambia CACHE_VERSION ad ogni nuova build pubblicata (tienilo allineato ad
 // APP_VERSION in index.html) così le cache vecchie vengono scartate subito.
-const CACHE_VERSION = "build-14";
+const CACHE_VERSION = "v1-18";
 const CACHE_NAME = "tock-cache-" + CACHE_VERSION;
 
 const APP_SHELL = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
