@@ -140,6 +140,13 @@ button.danger {
   50% { box-shadow: 0 0 28px 8px rgba(217,182,92,0.95); background: #fff3d6; }
 }
 
+.turn-timer {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: #8a7a5a;
+  flex-shrink: 0;
+}
 .swatch { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 .swatch-red { background: var(--red); }
 .swatch-green { background: var(--green); }
@@ -1205,6 +1212,7 @@ function dealNewHand(state) {
   const order = COLORS;
   const dIdx = order.indexOf(state.dealerColor);
   state.turnColor = order[(dIdx + 1) % 4];
+  state.turnStartedAt = Date.now();
 
   state.phase = "exchanging";
   state.pendingExchange = { red: null, green: null, yellow: null, blue: null };
@@ -1230,6 +1238,7 @@ function submitExchangeCard(state, color, card) {
     }
     state.pendingExchange = {};
     state.phase = "playing";
+    state.turnStartedAt = Date.now();
     state.log.push("Scambio completato, si comincia a giocare.");
   }
 }
@@ -1793,6 +1802,7 @@ function advanceTurn(state) {
     guard++;
   }
   state.turnColor = next;
+  state.turnStartedAt = Date.now();
 }
 
 function activeColorFor(state, seatColor) {
@@ -2549,7 +2559,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 5";
+const APP_VERSION = "2026-09-19 build 6";
 
 let myColor = null;
 let myRoomId = null;
@@ -2620,6 +2630,7 @@ function renderLobby() {
       el("p", { class: "muted teams-hint" },
         "Squadre: 🔴 Rosso + 🟡 Giallo (basi opposte) contro 🟢 Verde + 🔵 Blu (basi opposte)."),
       el("button", { id: "join-btn", class: "primary", onclick: joinRoom }, "Entra nella stanza"),
+      el("button", { class: "sound-test-btn", onclick: testSound }, "🔊 Test suono"),
       homeScreenHint()
     )
   );
@@ -2724,7 +2735,6 @@ function renderGameShell() {
           " · squadra " + TEAM_LABEL[TEAM_OF[myColor]]),
       ),
       el("div", { id: "conn-banner" }),
-      el("button", { class: "sound-test-btn", onclick: testSound }, "🔊 Test suono"),
       el("div", { id: "board-wrap" }),
       el("div", { id: "start-wrap" }),
       el("div", { id: "exchange-wrap" }),
@@ -2765,7 +2775,12 @@ function watchConnection() {
 // lazily and "unlocked" on the first tap (joining the room).
 let audioCtx = null;
 function unlockAudio() {
-  if (audioCtx) return;
+  if (audioCtx) {
+    // already created earlier — if it went to sleep in the meantime,
+    // resume it right now, synchronously within this same tap
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    return;
+  }
   try {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
@@ -2813,6 +2828,15 @@ const SOUND_RECIPES = {
   chatMessage: () => { beep(880, 0, 60, "sine", 0.28); },
 };
 
+// Called from every interactive tap in the game (a card, sending a chat
+// message, a picker button...) so the audio context has the best chance
+// of staying awake — a Firebase-triggered sound moments later then has a
+// much better chance of actually playing, since iOS only reliably keeps
+// audio alive shortly after a real tap.
+function keepAudioAlive() {
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+}
+
 function playSound(name) {
   if (!audioCtx) return;
   if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
@@ -2825,12 +2849,10 @@ function playSound(name) {
 // from "audio works but a specific event isn't triggering it".
 function testSound() {
   unlockAudio();
-  setTimeout(() => {
-    if (!audioCtx) { alert("Il browser non supporta l'audio qui."); return; }
-    beep(523, 0, 150, "sine", 0.5);
-    beep(659, 0.13, 150, "sine", 0.5);
-    beep(784, 0.26, 220, "sine", 0.5);
-  }, 30);
+  if (!audioCtx) { alert("Il browser non supporta l'audio qui."); return; }
+  beep(523, 0, 150, "sine", 0.5);
+  beep(659, 0.13, 150, "sine", 0.5);
+  beep(784, 0.26, 220, "sine", 0.5);
 }
 
 // Tracks the last event of each kind this client has already reacted to,
@@ -2959,6 +2981,7 @@ function renderExchangeControls(state) {
 }
 
 async function sendExchangeCard(card) {
+  keepAudioAlive();
   try {
     await updateState(myRoomId, (state) => {
       submitExchangeCard(state, myColor, card);
@@ -3053,12 +3076,31 @@ function miniPawnsRow(pawnPositions, color) {
 
 // ---------------- Turn / hand ----------------
 
+function formatElapsed(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+let turnTimerInterval = null;
+function ensureTurnTimerRunning() {
+  if (turnTimerInterval) return;
+  turnTimerInterval = setInterval(() => {
+    const span = document.getElementById("turn-timer");
+    if (!span || !currentState || currentState.phase !== "playing" || !currentState.turnStartedAt) return;
+    span.textContent = formatElapsed(Date.now() - currentState.turnStartedAt);
+  }, 1000);
+}
+
 function renderTurnIndicator(state) {
   const wrap = $("#turn-indicator");
   wrap.innerHTML = "";
   if (state.phase !== "playing") return;
+  ensureTurnTimerRunning();
   const active = activeColorFor(state, myColor);
   const isMyTurn = state.turnColor === myColor;
+  const elapsedNow = state.turnStartedAt ? Date.now() - state.turnStartedAt : 0;
   wrap.appendChild(
     el(
       "div",
@@ -3067,7 +3109,8 @@ function renderTurnIndicator(state) {
       el("strong", {}, ` Turno di ${playerName(state, state.turnColor)}`),
       isMyTurn
         ? el("span", { class: "you-badge" }, active === myColor ? " (tu)" : ` — muovi le pedine di ${playerName(state, active)}`)
-        : ""
+        : "",
+      el("span", { id: "turn-timer", class: "turn-timer" }, formatElapsed(elapsedNow))
     )
   );
 }
@@ -3140,6 +3183,7 @@ function cardLabel(card) {
 // if it genuinely has no legal use — it is burned right away. Either way
 // the turn advances by exactly one card.
 async function onCardClick(card) {
+  keepAudioAlive();
   const active = activeColorFor(currentState, myColor);
   const options = legalMovesForCard(currentState, active, card);
 
@@ -3285,6 +3329,7 @@ function renderJackPicker(active, card) {
 }
 
 async function toggleJackPick(active, card, target) {
+  keepAudioAlive();
   const already = jackPicked.findIndex((p) => p.color === target.color && p.pawnIndex === target.pawnIndex);
   if (already !== -1) jackPicked.splice(already, 1);
   else if (jackPicked.length < 2) jackPicked.push(target);
@@ -3352,6 +3397,7 @@ function adjustSeven(active, card, pawns, pawnIndex, delta) {
 }
 
 async function confirmSeven(active, card) {
+  keepAudioAlive();
   const distribution = Object.entries(sevenAllocation)
     .map(([pawnIndex, steps]) => ({ pawnIndex: parseInt(pawnIndex, 10), steps }))
     .filter((d) => d.steps > 0);
@@ -3440,6 +3486,7 @@ function chatLine(m) {
 }
 
 async function sendChat() {
+  keepAudioAlive();
   const input = $("#chat-input");
   const text = input.value.trim();
   if (!text) return;
@@ -3603,6 +3650,7 @@ function renderWinBanner(state) {
 }
 
 async function startNewGame() {
+  keepAudioAlive();
   try {
     await runUpdate((state) => {
       resetForNewGame(state);
