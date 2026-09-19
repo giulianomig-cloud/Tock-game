@@ -1593,7 +1593,7 @@ function applySevenDistribution(state, color, distribution) {
     if (dest < 1000) {
       const occ = occupantAt(state, dest);
       if (occ) {
-        recordCapture(state, occ, dest);
+        recordCapture(state, occ, dest, color);
         state.log.push(`${cn(color)} mangia ${cn(occ.color)} con parte del 7.`);
       }
     }
@@ -1606,13 +1606,14 @@ function applySevenDistribution(state, color, distribution) {
 
 // Records the last capture so every client can flash it on the board —
 // same mechanism as lastSwap for the Jack.
-function recordCapture(state, occ, atPos) {
+function recordCapture(state, occ, atPos, byColor) {
   state.lastCapture = {
     id: (state.lastCapture && state.lastCapture.id ? state.lastCapture.id : 0) + 1,
     ts: Date.now(),
     color: occ.color,
     pawnIndex: occ.pawnIndex,
     atPos,
+    by: byColor || null,
   };
   state.pawns[occ.color][occ.pawnIndex] = -1;
 }
@@ -1645,7 +1646,7 @@ function applyMove(state, color, card, move) {
     const baseIdx = BOARD.baseIndex[color];
     const occ = occupantAt(state, baseIdx);
     if (occ) {
-      recordCapture(state, occ, baseIdx);
+      recordCapture(state, occ, baseIdx, color);
       state.log.push(`${cn(occ.color)} mangiata sulla base da ${cn(color)} che entra.`);
     }
     state.pawns[color][move.pawnIndex] = baseIdx;
@@ -1659,7 +1660,7 @@ function applyMove(state, color, card, move) {
     if (dest < 1000) {
       const occ = occupantAt(state, dest);
       if (occ) {
-        recordCapture(state, occ, dest);
+        recordCapture(state, occ, dest, color);
         state.log.push(`${cn(color)} mangia ${cn(occ.color)} con ${cardLog(card)}.`);
       }
     }
@@ -2622,6 +2623,7 @@ function selectColor(c) {
 }
 
 async function joinRoom() {
+  unlockAudio();
   const roomId = $("#room-input").value.trim().toUpperCase();
   const name = $("#name-input").value.trim();
   if (!roomId) return alert("Inserisci un codice stanza.");
@@ -2720,9 +2722,111 @@ function watchConnection() {
   }
 }
 
+// ---------------- Sounds ----------------
+// Short synthesized tones (no audio files needed) for: your turn starts,
+// you capture a pawn, one of your pawns gets captured, a Jack is played,
+// and a new chat message while the chat panel is collapsed. iOS Safari
+// only allows audio after a real user tap, so the AudioContext is created
+// lazily and "unlocked" on the first tap (joining the room).
+let audioCtx = null;
+function unlockAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) {
+    audioCtx = null;
+  }
+}
+
+function beep(freq, startDelay, durationMs, type, gainPeak) {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime + startDelay;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.setValueAtTime(freq, t0);
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(gainPeak || 0.2, t0 + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + durationMs / 1000);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(t0);
+  osc.stop(t0 + durationMs / 1000 + 0.02);
+}
+
+const SOUND_RECIPES = {
+  // a bright, friendly two-note rising chime
+  turnStart: () => { beep(660, 0, 130, "sine", 0.18); beep(880, 0.1, 180, "sine", 0.18); },
+  // a quick, satisfied downward "gulp"
+  captureMade: () => { beep(520, 0, 90, "triangle", 0.22); beep(330, 0.07, 160, "triangle", 0.2); },
+  // a lower, brief "uh-oh" thud
+  captureLost: () => { beep(220, 0, 90, "sawtooth", 0.18); beep(150, 0.08, 200, "sawtooth", 0.16); },
+  // a distinct alternating "swap" blip
+  jackPlayed: () => { beep(700, 0, 70, "square", 0.14); beep(500, 0.08, 70, "square", 0.14); beep(700, 0.16, 90, "square", 0.14); },
+  // a soft, unobtrusive notification pop
+  chatMessage: () => { beep(880, 0, 60, "sine", 0.12); },
+};
+
+function playSound(name) {
+  if (!audioCtx) return;
+  if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  const recipe = SOUND_RECIPES[name];
+  if (recipe) recipe();
+}
+
+// Tracks the last event of each kind this client has already reacted to,
+// so a sound plays exactly once per event, never replayed after a reload.
+const soundTracker = { turnColor: null, captureId: null, swapId: null, chatCount: null };
+
+function maybePlaySounds(state) {
+  if (state.phase === "playing") {
+    if (soundTracker.turnColor === null) {
+      soundTracker.turnColor = state.turnColor; // baseline on first sight, no sound
+    } else if (state.turnColor !== soundTracker.turnColor) {
+      soundTracker.turnColor = state.turnColor;
+      if (state.turnColor === myColor) playSound("turnStart");
+    }
+  }
+
+  const cap = state.lastCapture;
+  if (cap && cap.id) {
+    if (soundTracker.captureId === null) {
+      soundTracker.captureId = cap.id;
+    } else if (cap.id !== soundTracker.captureId) {
+      soundTracker.captureId = cap.id;
+      const ageMs = Date.now() - (cap.ts || 0);
+      if (ageMs >= 0 && ageMs < 4000) {
+        if (cap.color === myColor) playSound("captureLost");
+        else if (cap.by === myColor) playSound("captureMade");
+      }
+    }
+  }
+
+  const swap = state.lastSwap;
+  if (swap && swap.id) {
+    if (soundTracker.swapId === null) {
+      soundTracker.swapId = swap.id;
+    } else if (swap.id !== soundTracker.swapId) {
+      soundTracker.swapId = swap.id;
+      const ageMs = Date.now() - (swap.ts || 0);
+      if (ageMs >= 0 && ageMs < 4000) playSound("jackPlayed");
+    }
+  }
+
+  const chatCount = (state.chat || []).length;
+  if (soundTracker.chatCount === null) {
+    soundTracker.chatCount = chatCount;
+  } else if (chatCount > soundTracker.chatCount) {
+    const last = state.chat[chatCount - 1];
+    soundTracker.chatCount = chatCount;
+    if (chatCollapsed && last && last.color !== myColor) playSound("chatMessage");
+  }
+}
+
 function onStateChange(state) {
   if (!state) return;
   currentState = state;
+  maybePlaySounds(state);
   renderStartControls(state);
   renderExchangeControls(state);
   renderPawns(boardSvg, BOARD, state.pawns, state.lastSwap, state.lastCapture);
@@ -2815,11 +2919,12 @@ function renderPlayerStatus(state) {
   const row = el("div", { class: "status-row" });
   for (const c of COLORS) {
     const isTurn = state.phase === "playing" && state.turnColor === c;
+    const isDealer = state.dealerColor === c;
     row.appendChild(
       el(
         "div",
         { class: "status-chip" + (isTurn ? " status-chip-active" : "") },
-        el("span", { class: "status-name" }, playerName(state, c)),
+        el("span", { class: "status-name" }, playerName(state, c) + (isDealer ? " 🃏" : "")),
         miniPawnsRow(state.pawns[c], c)
       )
     );
