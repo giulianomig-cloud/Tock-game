@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Tock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
   --ink: #3a2b22;
@@ -23,9 +26,12 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: #3a2b1c;
-  background: radial-gradient(circle at 50% 0%, #4a3624, #2c2015);
+  background:
+    radial-gradient(circle at 50% -10%, rgba(255,220,160,0.10), transparent 55%),
+    radial-gradient(circle at 50% 0%, #4a3624, #2c2015 70%),
+    radial-gradient(circle at 50% 120%, #000 0%, transparent 60%);
   color: var(--ink);
 }
 
@@ -80,6 +86,13 @@ button.primary {
   border: 1px solid var(--gold);
   border-radius: 10px;
   cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.35);
+}
+button.primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.35);
+  filter: brightness(0.92);
 }
 button.secondary {
   padding: 10px 14px;
@@ -88,6 +101,13 @@ button.secondary {
   background: #fffaf0;
   margin: 4px;
   cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.25);
+}
+button.secondary:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  filter: brightness(0.94);
 }
 button.danger {
   padding: 10px 14px;
@@ -97,6 +117,13 @@ button.danger {
   color: white;
   margin-top: 8px;
   cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.35);
+}
+button.danger:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.35);
+  filter: brightness(0.9);
 }
 
 .top-bar {
@@ -189,14 +216,19 @@ button.danger {
   height: 76px;
   padding: 4px;
   border-radius: 6px;
-  border: 1px solid #b9ac89;
+  border: 1.5px solid #8a7a5a;
   background: linear-gradient(180deg, #fffefb, #f8f0dc);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.7);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.8) inset, 0 0 0 1px rgba(255,255,255,0.55) inset;
   cursor: pointer;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.card-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.8) inset;
 }
 .card-btn.suit-red { color: #c81e3f; }
 .card-btn.suit-black { color: #16110c; }
@@ -1958,7 +1990,8 @@ function buildBoardSVG(containerEl, board) {
   svg.style.height = "auto";
   svg.style.display = "block";
   svg.style.borderRadius = "14px";
-  svg.style.boxShadow = "0 6px 18px rgba(58,43,34,0.25)";
+  svg.style.border = "9px solid #6b4a2a";
+  svg.style.boxShadow = "0 8px 22px rgba(0,0,0,0.5), inset 0 0 0 2px #3d2a17, inset 0 0 8px 2px rgba(0,0,0,0.35)";
 
   // ---- defs: gradients for background, bases, cells ----
   const defs = ns_el("defs", {});
@@ -2570,7 +2603,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 7";
+const APP_VERSION = "2026-09-19 build 8";
 
 let myColor = null;
 let myRoomId = null;
@@ -2785,7 +2818,27 @@ function watchConnection() {
 // only allows audio after a real user tap, so the AudioContext is created
 // lazily and "unlocked" on the first tap (joining the room).
 let audioCtx = null;
+// A silent audio clip, looped continuously in the background — often more
+// reliable than WebAudio alone for keeping iOS Safari's audio channel
+// open, which is why it's started (once) in the very same tap that first
+// unlocks audio.
+const SILENT_WAV_DATA_URI =
+  "data:audio/wav;base64,UklGRuwAAABXQVZFZm10IBAAAAABAAEAoA8AAKAPAAABAAgAZGF0YcgAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
+let silentAudioEl = null;
+function startSilentKeepAlive() {
+  if (silentAudioEl) return;
+  try {
+    silentAudioEl = new Audio(SILENT_WAV_DATA_URI);
+    silentAudioEl.loop = true;
+    silentAudioEl.volume = 0.01;
+    silentAudioEl.play().catch(() => {});
+  } catch (e) {
+    silentAudioEl = null;
+  }
+}
+
 function unlockAudio() {
+  startSilentKeepAlive();
   if (audioCtx) {
     // already created earlier — if it went to sleep in the meantime,
     // resume it right now, synchronously within this same tap
@@ -2847,6 +2900,15 @@ const SOUND_RECIPES = {
 function keepAudioAlive() {
   if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
 }
+
+// A best-effort periodic nudge, on top of the tap-triggered one above: iOS
+// tends to suspend audio again after a few seconds of no direct touch, and
+// this can sometimes bring it back even without a fresh tap. Not
+// guaranteed — Safari's policy is strict — but it's the most that can be
+// done from the browser alone.
+setInterval(() => {
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+}, 3000);
 
 function playSound(name) {
   if (!audioCtx) return;
