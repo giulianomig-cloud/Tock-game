@@ -2668,7 +2668,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 13";
+const APP_VERSION = "2026-09-19 build 14";
 
 let myColor = null;
 let myRoomId = null;
@@ -2746,12 +2746,41 @@ function renderLobby() {
   );
 }
 
+// Riconosce il sistema dal browser (iOS/iPadOS vs Android vs altro) per
+// mostrare istruzioni di installazione corrette: i passaggi per
+// "aggiungere a Home" sono diversi tra Safari (iPhone/iPad) e Chrome
+// (Android), quindi un testo unico era fuorviante su metà dei telefoni.
+function detectPlatform() {
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) return "ios";
+  if (/Android/.test(ua)) return "android";
+  return "other";
+}
+
+// True se il gioco è già stato aperto come app installata (standalone) —
+// in tal caso il suggerimento non serve più.
+function isStandaloneDisplay() {
+  return (
+    (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+    window.navigator.standalone === true
+  );
+}
+
 function homeScreenHint() {
   if (localStorage.getItem("tock-hide-a2hs") === "1") return "";
+  if (isStandaloneDisplay()) return "";
+  const platform = detectPlatform();
+  const text =
+    platform === "ios"
+      ? "💡 Consiglio: tocca l'icona Condividi (il quadratino con la freccia in su) in Safari e scegli \"Aggiungi a Home\" per aprire il gioco a schermo intero come un'app."
+      : platform === "android"
+      ? "💡 Consiglio: apri il menu ⋮ in alto a destra in Chrome e scegli \"Installa app\" (o \"Aggiungi a schermata Home\") per aprire il gioco a schermo intero come un'app."
+      : "💡 Consiglio: usa la funzione \"Aggiungi a schermata Home\" del tuo browser per aprire il gioco a schermo intero come un'app.";
   const box = el(
     "div",
     { class: "a2hs-hint" },
-    el("span", {}, "💡 Consiglio: apri il menu Condividi del browser e scegli \"Aggiungi a schermata Home\" per aprire il gioco a schermo intero come un'app."),
+    el("span", {}, text),
     el("button", { class: "a2hs-close", onclick: (e) => { localStorage.setItem("tock-hide-a2hs", "1"); e.target.closest(".a2hs-hint").remove(); } }, "✕")
   );
   return box;
