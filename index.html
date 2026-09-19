@@ -1324,6 +1324,17 @@ function occupantAt(state, pos) {
   return null;
 }
 
+// Home cells are private to each color — position 1000+N is a completely
+// different physical spot for red than for yellow. So "is this cell
+// occupied" can only be asked meaningfully either on the shared loop
+// (occupantAt, pos < 1000) or within ONE specific color's own home
+// stretch (this helper). Never compare a raw home-cell number across
+// colors — that's how a green pawn in its own casa#3 once made the game
+// think yellow's casa#3 was occupied too.
+function isBlockedAlongPath(state, color, cells) {
+  return cells.some((p) => (p >= 1000 ? homeOccupant(state, color, p - 1000) !== -1 : !!occupantAt(state, p)));
+}
+
 function homeOccupant(state, color, homeIdx) {
   const pos = 1000 + homeIdx;
   return state.pawns[color].indexOf(pos); // -1 if none
@@ -1361,7 +1372,7 @@ function movesForValue(state, color, value) {
       const addIfLegal = (path) => {
         if (!path) return;
         const mid = path.slice(0, -1);
-        if (mid.some((p) => occupantAt(state, p))) return; // can't pass over anyone
+        if (isBlockedAlongPath(state, color, mid)) return; // can't pass over anyone
         const dest = path[path.length - 1];
         if (destinationIsLegal(state, color, dest)) {
           options.push({ type: "move", pawnIndex, path });
@@ -1382,7 +1393,7 @@ function movesForValue(state, color, value) {
       const path = pathBackward(color, pos, -value);
       if (!path) return;
       const mid = path.slice(0, -1);
-      const blocked = mid.some((p) => occupantAt(state, p));
+      const blocked = isBlockedAlongPath(state, color, mid);
       if (!blocked) {
         const dest = path[path.length - 1];
         if (destinationIsLegal(state, color, dest)) options.push({ type: "move", pawnIndex, path });
@@ -2559,7 +2570,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 6";
+const APP_VERSION = "2026-09-19 build 7";
 
 let myColor = null;
 let myRoomId = null;
