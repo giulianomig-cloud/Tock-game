@@ -44,7 +44,8 @@ body {
 #app { max-width: 480px; margin: 0 auto; padding: 12px; min-height: 100vh; }
 
 h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--ink); }
-.app-meta { font-size: 0.7rem; color: #a89873; margin: 0 0 10px; letter-spacing: 0.02em; }
+.sound-test-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.app-meta { font-size: 0.65rem; color: #a89873; letter-spacing: 0.02em; opacity: 0.8; margin: 0; }
 .muted { color: #7a6a55; font-size: 0.9rem; }
 
 .lobby-card, .start-card {
@@ -143,8 +144,8 @@ button.danger:active {
 }
 .top-bar span { flex-shrink: 0; }
 .sound-test-btn {
-  display: block;
-  margin: 0 0 8px;
+  display: inline-block;
+  margin: 0;
   padding: 6px 12px;
   font-size: 0.8rem;
   border-radius: 8px;
@@ -2668,7 +2669,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "v1.18";
+const APP_VERSION = "v1.20";
 
 let myColor = null;
 let myRoomId = null;
@@ -2731,7 +2732,6 @@ function renderLobby() {
       "div",
       { class: "lobby-card" },
       el("h1", {}, "Tock"),
-      el("p", { class: "app-meta" }, `by Mig · ${APP_VERSION} · © 2026 Mig`),
       el("p", { class: "muted" }, "Inserisci il codice stanza, il tuo nome e scegli il tuo colore."),
       roomInput,
       nameInput,
@@ -2740,7 +2740,12 @@ function renderLobby() {
         "Squadre: ", swatchDot("red"), "Rosso + ", swatchDot("yellow"), "Giallo (basi opposte) contro ",
         swatchDot("green"), "Verde + ", swatchDot("blue"), "Blu (basi opposte)."),
       el("button", { id: "join-btn", class: "primary", onclick: joinRoom }, "Entra nella stanza"),
-      el("button", { class: "sound-test-btn", onclick: testSound }, "🔊 Test suono"),
+      el(
+        "div",
+        { class: "sound-test-row" },
+        el("button", { class: "sound-test-btn", onclick: testSound }, "🔊 Test suono"),
+        el("span", { class: "app-meta" }, `Tock by Mig · ${APP_VERSION} · © 2026 Mig`)
+      ),
       homeScreenHint()
     )
   );
