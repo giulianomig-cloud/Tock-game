@@ -2549,7 +2549,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 4";
+const APP_VERSION = "2026-09-19 build 5";
 
 let myColor = null;
 let myRoomId = null;
@@ -2843,7 +2843,7 @@ function maybePlaySounds(state) {
       soundTracker.turnColor = state.turnColor; // baseline on first sight, no sound
     } else if (state.turnColor !== soundTracker.turnColor) {
       soundTracker.turnColor = state.turnColor;
-      if (state.turnColor === myColor) playSound("turnStart");
+      playSound("turnStart"); // everyone hears every turn change, not just the player whose turn it is
     }
   }
 
@@ -2854,10 +2854,7 @@ function maybePlaySounds(state) {
     } else if (cap.id !== soundTracker.captureId) {
       soundTracker.captureId = cap.id;
       const ageMs = Date.now() - (cap.ts || 0);
-      if (ageMs >= 0 && ageMs < 4000) {
-        if (cap.color === myColor) playSound("captureLost");
-        else if (cap.by === myColor) playSound("captureMade");
-      }
+      if (ageMs >= 0 && ageMs < 4000) playSound("captureMade"); // one shared sound for everyone, regardless of who captured whom
     }
   }
 
