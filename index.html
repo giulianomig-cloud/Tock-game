@@ -106,6 +106,17 @@ button.danger {
   color: #d8c9a8;
   margin-bottom: 8px;
 }
+.sound-test-btn {
+  display: block;
+  margin: 0 0 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
 
 #board-wrap { margin-bottom: 10px; }
 
@@ -1425,15 +1436,23 @@ function isPawnProtected(state, color, pawnIndex) {
 }
 
 // ---- Jack: swap any two pawns on the board (not the protected one) ----
+// A pawn resting in a home cell is off-limits for the Jack entirely — a
+// home cell's numeric position (1000+N) means a different physical spot
+// for each color, so swapping one in or out of home can never be made to
+// work consistently across colors. The Jack only ever touches pawns still
+// on the shared main loop.
 function jackableTargets(state) {
   return allPawnPositions(state).filter(
-    (p) => !isPawnProtected(state, p.color, p.pawnIndex)
+    (p) => p.pos < 1000 && !isPawnProtected(state, p.color, p.pawnIndex)
   );
 }
 
 function applyJackSwap(state, a, b) {
   const posA = state.pawns[a.color][a.pawnIndex];
   const posB = state.pawns[b.color][b.pawnIndex];
+  if (posA >= 1000 || posB >= 1000) {
+    throw new Error("il Jack non può coinvolgere una pedina già in casa");
+  }
   state.pawns[a.color][a.pawnIndex] = posB;
   state.pawns[b.color][b.pawnIndex] = posA;
   state.log.push(`scambio (Jack) tra ${cn(a.color)}#${a.pawnIndex + 1} (${posLabel(a.color, posA)}→${posLabel(a.color, posB)}) e ${cn(b.color)}#${b.pawnIndex + 1} (${posLabel(b.color, posB)}→${posLabel(b.color, posA)}).`);
@@ -2530,7 +2549,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 3";
+const APP_VERSION = "2026-09-19 build 4";
 
 let myColor = null;
 let myRoomId = null;
@@ -2705,6 +2724,7 @@ function renderGameShell() {
           " · squadra " + TEAM_LABEL[TEAM_OF[myColor]]),
       ),
       el("div", { id: "conn-banner" }),
+      el("button", { class: "sound-test-btn", onclick: testSound }, "🔊 Test suono"),
       el("div", { id: "board-wrap" }),
       el("div", { id: "start-wrap" }),
       el("div", { id: "exchange-wrap" }),
@@ -2782,15 +2802,15 @@ function beep(freq, startDelay, durationMs, type, gainPeak) {
 
 const SOUND_RECIPES = {
   // a bright, friendly two-note rising chime
-  turnStart: () => { beep(660, 0, 130, "sine", 0.18); beep(880, 0.1, 180, "sine", 0.18); },
+  turnStart: () => { beep(660, 0, 130, "sine", 0.4); beep(880, 0.1, 180, "sine", 0.4); },
   // a quick, satisfied downward "gulp"
-  captureMade: () => { beep(520, 0, 90, "triangle", 0.22); beep(330, 0.07, 160, "triangle", 0.2); },
+  captureMade: () => { beep(520, 0, 90, "triangle", 0.45); beep(330, 0.07, 160, "triangle", 0.42); },
   // a lower, brief "uh-oh" thud
-  captureLost: () => { beep(220, 0, 90, "sawtooth", 0.18); beep(150, 0.08, 200, "sawtooth", 0.16); },
+  captureLost: () => { beep(220, 0, 90, "sawtooth", 0.4); beep(150, 0.08, 200, "sawtooth", 0.38); },
   // a distinct alternating "swap" blip
-  jackPlayed: () => { beep(700, 0, 70, "square", 0.14); beep(500, 0.08, 70, "square", 0.14); beep(700, 0.16, 90, "square", 0.14); },
+  jackPlayed: () => { beep(700, 0, 70, "square", 0.32); beep(500, 0.08, 70, "square", 0.32); beep(700, 0.16, 90, "square", 0.32); },
   // a soft, unobtrusive notification pop
-  chatMessage: () => { beep(880, 0, 60, "sine", 0.12); },
+  chatMessage: () => { beep(880, 0, 60, "sine", 0.28); },
 };
 
 function playSound(name) {
@@ -2798,6 +2818,19 @@ function playSound(name) {
   if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
   const recipe = SOUND_RECIPES[name];
   if (recipe) recipe();
+}
+
+// Manual diagnostic: tap to hear a clear tone right away, decoupled from
+// any game event — isolates "audio doesn't work at all on this phone"
+// from "audio works but a specific event isn't triggering it".
+function testSound() {
+  unlockAudio();
+  setTimeout(() => {
+    if (!audioCtx) { alert("Il browser non supporta l'audio qui."); return; }
+    beep(523, 0, 150, "sine", 0.5);
+    beep(659, 0.13, 150, "sine", 0.5);
+    beep(784, 0.26, 220, "sine", 0.5);
+  }, 30);
 }
 
 // Tracks the last event of each kind this client has already reacted to,
