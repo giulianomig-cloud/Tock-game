@@ -2079,9 +2079,9 @@ function buildBoardSVG(containerEl, board) {
   svg.appendChild(defs);
 
   // ---- background ----
-  svg.appendChild(ns_el("rect", { x: 0, y: 0, width: S, height: S, rx: 16, fill: "url(#bg-grad)" }));
+  svg.appendChild(ns_el("rect", { x: 0, y: 0, width: S, height: S, fill: "url(#bg-grad)" }));
   svg.appendChild(ns_el("rect", {
-    x: 0, y: 0, width: S, height: S, rx: 16, fill: "#3a2412", opacity: 0.14, filter: "url(#wood-grain)",
+    x: 0, y: 0, width: S, height: S, fill: "#3a2412", opacity: 0.14, filter: "url(#wood-grain)",
   }));
 
   function line(x1, y1, x2, y2) {
@@ -2611,7 +2611,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 9";
+const APP_VERSION = "2026-09-19 build 10";
 
 let myColor = null;
 let myRoomId = null;
