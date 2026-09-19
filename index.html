@@ -1454,23 +1454,28 @@ function applyJackSwap(state, a, b) {
 // (or step off the base) and let the very next portion use that freed
 // path or open home slot in the same turn. ----
 
+// Walks the full N-step path for one pawn. Unlike every other card, the 7
+// may capture a pawn found ALONG THE WAY (not just at the very last step)
+// and keep going, using its full allotted steps to the very end — it
+// doesn't stop the moment it captures. Blocked entirely by an own pawn, a
+// protected pawn, or an occupied home cell anywhere on the path.
 function sevenSinglePawnPath(state, color, pos, steps, allowEarlyCapture) {
   const full = pathForward(color, pos, steps);
   if (!full) return null;
   for (let i = 0; i < full.length; i++) {
     const cell = full[i];
-    const occ = cell >= 1000 ? null : occupantAt(state, cell);
-    if (occ) {
-      if (occ.color === color) return null; // own pawn always blocks
-      if (isPawnProtected(state, occ.color, occ.pawnIndex)) return null; // never capturable
-      // enemy or partner pawn found before the end
-      if (i === full.length - 1) return full; // lands exactly on it: normal capture
-      if (allowEarlyCapture) return full.slice(0, i + 1); // stop here, capture early
-      return null; // blocked, no early-capture allowance for this portion
-    }
     if (cell >= 1000) {
       const homeOcc = homeOccupant(state, color, cell - 1000);
       if (homeOcc !== -1) return null; // home cells are safe, can't land/pass
+      continue;
+    }
+    const occ = occupantAt(state, cell);
+    if (occ) {
+      if (occ.color === color) return null; // own pawn always blocks
+      if (isPawnProtected(state, occ.color, occ.pawnIndex)) return null; // never capturable
+      const isLastStep = i === full.length - 1;
+      if (!isLastStep && !allowEarlyCapture) return null; // blocked mid-path
+      // otherwise: capture this one and keep going toward the full distance
     }
   }
   return full;
@@ -1486,16 +1491,15 @@ function clonePawns(pawns) {
 // shared by validation (on a scratch copy) and the real application (on
 // the live state), so both follow the exact same step-by-step logic.
 function landSevenPortion(pawnsObj, color, pawnIndex, path) {
-  const dest = path[path.length - 1];
-  let captured = null;
-  if (dest < 1000) {
+  for (const cell of path) {
+    if (cell >= 1000) continue;
     for (const c of COLORS) {
-      const idx = pawnsObj[c].indexOf(dest);
-      if (idx !== -1) { captured = { color: c, pawnIndex: idx }; pawnsObj[c][idx] = -1; break; }
+      const idx = pawnsObj[c].indexOf(cell);
+      if (idx !== -1) { pawnsObj[c][idx] = -1; break; }
     }
   }
+  const dest = path[path.length - 1];
   pawnsObj[color][pawnIndex] = dest;
-  return captured;
 }
 
 function sevenHasAnyDistribution(state, color) {
@@ -1592,10 +1596,13 @@ function applySevenDistribution(state, color, distribution) {
     const path = paths[pawnIndex];
     const dest = path[path.length - 1];
     const oldPos = state.pawns[color][pawnIndex];
-    if (dest < 1000) {
-      const occ = occupantAt(state, dest);
+    // capture EVERY pawn found anywhere along this portion's path, not
+    // just at the final resting cell — the 7 keeps going after eating.
+    for (const cell of path) {
+      if (cell >= 1000) continue;
+      const occ = occupantAt(state, cell);
       if (occ) {
-        recordCapture(state, occ, dest, color);
+        recordCapture(state, occ, cell, color);
         state.log.push(`${cn(color)} mangia ${cn(occ.color)} con parte del 7.`);
       }
     }
@@ -2523,7 +2530,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 2";
+const APP_VERSION = "2026-09-19 build 3";
 
 let myColor = null;
 let myRoomId = null;
@@ -2741,6 +2748,17 @@ function unlockAudio() {
   if (audioCtx) return;
   try {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    // iOS Safari needs an actual sound node started (not just the context
+    // created) during this same tap to truly unlock later playback — a
+    // near-silent one-sample blip does the job without being heard.
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.0001;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.01);
   } catch (e) {
     audioCtx = null;
   }
@@ -3409,10 +3427,19 @@ async function sendChat() {
 
 const LOG_COLORS = ["red", "green", "yellow", "blue"];
 function detectLogColor(line) {
+  // pick whichever color name appears EARLIEST in the sentence — that's
+  // always the subject/actor of the log line — not just the first color
+  // checked in a fixed order (which broke lines like "Blu mangia Rosso").
+  let bestColor = null;
+  let bestIndex = Infinity;
   for (const c of LOG_COLORS) {
-    if (line.indexOf(colorLabel(c)) !== -1) return c;
+    const idx = line.indexOf(colorLabel(c));
+    if (idx !== -1 && idx < bestIndex) {
+      bestIndex = idx;
+      bestColor = c;
+    }
   }
-  return null;
+  return bestColor;
 }
 
 const OLD_SUIT_SYMBOL = { hearts: "♥", diamonds: "♦", clubs: "♣", spades: "♠" };
