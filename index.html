@@ -2053,7 +2053,8 @@ function buildBoardSVG(containerEl, board) {
   // common cell.
   function cell(cx, cy, r) {
     const g = ns_el("g", {});
-    g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-cream)", stroke: "#8a7a5a", "stroke-width": CELL_BORDER_WIDTH }));
+    g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-cream)", stroke: lighten("#8a7a5a", 0.35), "stroke-width": CELL_BORDER_WIDTH }));
+    g.appendChild(ns_el("circle", { cx, cy, r: r - CELL_BORDER_WIDTH / 2 - 0.6, fill: "none", stroke: "#140c07", "stroke-width": 1, opacity: 0.55 }));
     return g;
   }
 
@@ -2063,8 +2064,8 @@ function buildBoardSVG(containerEl, board) {
   // empty slot underneath it.
   function specialCell(cx, cy, r, colorHex) {
     const g = ns_el("g", {});
-    g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-plain)", stroke: colorHex, "stroke-width": CELL_BORDER_WIDTH }));
-    g.appendChild(ns_el("circle", { cx, cy, r: r - CELL_BORDER_WIDTH / 2 - 0.6, fill: "none", stroke: "#2a2015", "stroke-width": 0.8, opacity: 0.4 }));
+    g.appendChild(ns_el("circle", { cx, cy, r, fill: "url(#cell-plain)", stroke: lighten(colorHex, 0.35), "stroke-width": CELL_BORDER_WIDTH }));
+    g.appendChild(ns_el("circle", { cx, cy, r: r - CELL_BORDER_WIDTH / 2 - 0.6, fill: "none", stroke: "#140c07", "stroke-width": 1, opacity: 0.55 }));
     return g;
   }
 
