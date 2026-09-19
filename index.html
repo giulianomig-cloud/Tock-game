@@ -15,7 +15,7 @@
   --gold-metallic: linear-gradient(135deg, #f6e2a0 0%, #d9b65c 35%, #a97c28 60%, #eecf85 100%);
   --red: #ff2d55;
   --green: #00e68a;
-  --yellow: #cc8400;
+  --yellow: #f2c200;
   --blue: #00b0ff;
 }
 
@@ -65,7 +65,7 @@ h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--ink); }
 }
 .color-red { background: var(--red); }
 .color-green { background: var(--green); }
-.color-yellow { background: var(--yellow); color: white; }
+.color-yellow { background: var(--yellow); color: var(--ink); }
 .color-blue { background: var(--blue); }
 .color-btn.selected { border-color: var(--ink); transform: scale(0.97); }
 
@@ -1052,8 +1052,8 @@ const BOARD = {
 
 const COLORS = ["red", "green", "yellow", "blue"];
 const TEAM_OF = { red: "A", yellow: "A", green: "B", blue: "B" };
-const TEAM_LABEL = { A: "Rosso + Ocra", B: "Verde + Blu" };
-const ITALIAN_COLOR = { red: "Rosso", green: "Verde", yellow: "Ocra", blue: "Blu" };
+const TEAM_LABEL = { A: "Rosso + Giallo", B: "Verde + Blu" };
+const ITALIAN_COLOR = { red: "Rosso", green: "Verde", yellow: "Giallo", blue: "Blu" };
 function cn(color) { return ITALIAN_COLOR[color] || color; }
 const SUIT_SYMBOL = { hearts: "♥", diamonds: "♦", clubs: "♣", spades: "♠" };
 // Card as shown in the log — e.g. "3-clubs" -> "3♣" — instead of the raw
@@ -1649,7 +1649,7 @@ function applyMove(state, color, card, move) {
       state.log.push(`${cn(occ.color)} mangiata sulla base da ${cn(color)} che entra.`);
     }
     state.pawns[color][move.pawnIndex] = baseIdx;
-    state.log.push(`${cn(color)} #${move.pawnIndex + 1} fa entrare una pedina con ${cardLog(card)} (→ ${posLabel(color, baseIdx)}).`);
+    state.log.push(`${cn(color)} #${move.pawnIndex + 1} entra in gioco con ${cardLog(card)} (sulla base).`);
     return;
   }
 
@@ -1858,7 +1858,7 @@ async function updateState(roomId, mutatorFn) {
 const BASE_COL = {
   red: "#FF2D55",
   green: "#00E68A",
-  yellow: "#CC8400",
+  yellow: "#F2C200",
   blue: "#00B0FF",
 };
 const PAWN_RING = "#3A2B22";
@@ -2047,7 +2047,7 @@ function buildBoardSVG(containerEl, board) {
   // Plain, walkable loop cells: a recessed "hole carved into the wood"
   // — darker toward the center, lighter at the rim — instead of the
   // glossy raised look used for pawns and special cells.
-  const CELL_BORDER_WIDTH = 4.2; // same thickness for every cell on the board
+  const CELL_BORDER_WIDTH = 3.8; // same thickness for every cell on the board
 
   // Plain, walkable loop cells: bright white/cream — the default, most
   // common cell.
@@ -2096,20 +2096,38 @@ function buildBoardSVG(containerEl, board) {
   return svg;
 }
 
+// A crown-cap silhouette with a smooth wavy (not pointed) crimped edge —
+// same tooth count as a real bottle cap, but rounded scallops instead of
+// sharp triangular points. Built as a closed cubic-bezier path so the
+// waves are gently curved rather than polygonal.
 function capOutlinePath(R, teeth, jag) {
   teeth = teeth || 20;
   jag = jag || 0.16;
   const Ro = R;
   const Ri = R * (1 - jag);
-  const n = teeth * 2;
+  const n = teeth * 2; // one control vertex per tooth peak/valley, as before
   const pts = [];
   for (let i = 0; i < n; i++) {
     const ang = ((2 * Math.PI) / n) * i - Math.PI / 2;
     const r = i % 2 === 0 ? Ro : Ri;
     pts.push([r * Math.cos(ang), r * Math.sin(ang)]);
   }
+  // Catmull-Rom -> cubic Bezier through the same peak/valley points, so the
+  // silhouette keeps the identical number of bumps but every corner is a
+  // smooth curve instead of a sharp vertex.
+  const k = 1 / 6;
   let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)} `;
-  for (let i = 1; i < pts.length; i++) d += `L ${pts[i][0].toFixed(2)} ${pts[i][1].toFixed(2)} `;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n];
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const p3 = pts[(i + 2) % n];
+    const c1x = p1[0] + (p2[0] - p0[0]) * k;
+    const c1y = p1[1] + (p2[1] - p0[1]) * k;
+    const c2x = p2[0] - (p3[0] - p1[0]) * k;
+    const c2y = p2[1] - (p3[1] - p1[1]) * k;
+    d += `C ${c1x.toFixed(2)} ${c1y.toFixed(2)} ${c2x.toFixed(2)} ${c2y.toFixed(2)} ${p2[0].toFixed(2)} ${p2[1].toFixed(2)} `;
+  }
   d += "Z";
   return d;
 }
@@ -2555,7 +2573,7 @@ function renderLobby() {
       nameInput,
       colorRow,
       el("p", { class: "muted teams-hint" },
-        "Squadre: 🔴 Rosso + 🟤 Ocra (basi opposte) contro 🟢 Verde + 🔵 Blu (basi opposte)."),
+        "Squadre: 🔴 Rosso + 🟡 Giallo (basi opposte) contro 🟢 Verde + 🔵 Blu (basi opposte)."),
       el("button", { id: "join-btn", class: "primary", onclick: joinRoom }, "Entra nella stanza"),
       homeScreenHint()
     )
@@ -2574,10 +2592,10 @@ function homeScreenHint() {
 }
 
 function colorLabel(c) {
-  return { red: "Rosso", green: "Verde", yellow: "Ocra", blue: "Blu" }[c];
+  return { red: "Rosso", green: "Verde", yellow: "Giallo", blue: "Blu" }[c];
 }
 function colorEmoji(c) {
-  return { red: "🔴", green: "🟢", yellow: "🟤", blue: "🔵" }[c];
+  return { red: "🔴", green: "🟢", yellow: "🟡", blue: "🔵" }[c];
 }
 
 // Prefer the name the player chose when joining; fall back to the plain
@@ -2803,7 +2821,7 @@ function renderPlayerStatus(state) {
 // play), filled = out on the board (loop or home) — shows the exact pawn
 // count at a glance instead of a text tally.
 function miniPawnsRow(pawnPositions, color) {
-  const hex = { red: "#FF2D55", green: "#00E68A", yellow: "#CC8400", blue: "#00B0FF" }[color];
+  const hex = { red: "#FF2D55", green: "#00E68A", yellow: "#F2C200", blue: "#00B0FF" }[color];
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("viewBox", "0 0 100 22");
@@ -3251,8 +3269,25 @@ const OLD_SUIT_SYMBOL = { hearts: "♥", diamonds: "♦", clubs: "♣", spades: 
 // as it happened and never gets rewritten later. This translates them for
 // DISPLAY only, on the fly, so a game that started before this change
 // still reads consistently in Italian.
+// Every name a color has ever been shown under, oldest first — so old log
+// lines (saved under an earlier name) still get translated and color-coded
+// correctly after a rename, not just brand-new lines.
+const LEGACY_COLOR_NAMES = {
+  red: ["red", "Rosso"],
+  green: ["green", "Verde"],
+  yellow: ["yellow", "Giallo", "Ambra", "Ocra"],
+  blue: ["blue", "Blu"],
+};
+
 function displayLogLine(line) {
-  let out = line.replace(/\b(red|green|yellow|blue)\b/g, (m) => colorLabel(m));
+  let out = line;
+  for (const key of COLORS) {
+    const current = colorLabel(key);
+    for (const old of LEGACY_COLOR_NAMES[key]) {
+      if (old === current) continue;
+      out = out.replace(new RegExp(`\\b${old}\\b`, "g"), current);
+    }
+  }
   out = out.replace(/\b([2-9]|10|[AKQJ])-(hearts|diamonds|clubs|spades)\b/g, (m, rank, suit) => rank + OLD_SUIT_SYMBOL[suit]);
   return out;
 }
@@ -3368,7 +3403,7 @@ async function startNewGame() {
 }
 
 function launchConfetti(winnerColors) {
-  const hexOf = { red: "#FF2D55", green: "#00E68A", yellow: "#CC8400", blue: "#00B0FF" };
+  const hexOf = { red: "#FF2D55", green: "#00E68A", yellow: "#F2C200", blue: "#00B0FF" };
   const colors = winnerColors.map((c) => hexOf[c]).concat(["#D9B65C", "#ffffff"]);
   const layer = document.createElement("div");
   layer.className = "confetti-layer";
