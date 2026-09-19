@@ -32,6 +32,7 @@ body {
 #app { max-width: 480px; margin: 0 auto; padding: 12px; min-height: 100vh; }
 
 h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--ink); }
+.app-version { font-size: 0.72rem; color: #a89873; margin: 0 0 10px; }
 .muted { color: #7a6a55; font-size: 0.9rem; }
 
 .lobby-card, .start-card {
@@ -155,6 +156,7 @@ button.danger {
 .status-chip-active { border-color: var(--gold); background: #fff3d6; }
 .status-name { font-weight: 600; }
 .mini-pawns { width: 62px; height: 14px; flex-shrink: 0; }
+.dealer-icon { width: 18px; height: 18px; flex-shrink: 0; }
 
 .hand-row {
   display: flex;
@@ -2518,6 +2520,11 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // App principale: lobby, scambio carte, schermata di gioco.
 // ============================================================
 
+// Bumped by hand each time a new build is produced — shown in the lobby so
+// it's obvious at a glance whether you're on the latest version, instead
+// of guessing from a stale browser tab or cache.
+const APP_VERSION = "2026-09-19 build 2";
+
 let myColor = null;
 let myRoomId = null;
 let myName = null;
@@ -2579,6 +2586,7 @@ function renderLobby() {
       "div",
       { class: "lobby-card" },
       el("h1", {}, "Tock"),
+      el("p", { class: "app-version" }, `Versione: ${APP_VERSION}`),
       el("p", { class: "muted" }, "Inserisci il codice stanza, il tuo nome e scegli il tuo colore."),
       roomInput,
       nameInput,
@@ -2924,12 +2932,42 @@ function renderPlayerStatus(state) {
       el(
         "div",
         { class: "status-chip" + (isTurn ? " status-chip-active" : "") },
-        el("span", { class: "status-name" }, playerName(state, c) + (isDealer ? " 🃏" : "")),
+        el("span", { class: "status-name" }, playerName(state, c)),
+        isDealer ? dealerIcon() : "",
         miniPawnsRow(state.pawns[c], c)
       )
     );
   }
   wrap.appendChild(row);
+}
+
+// Small hand-drawn "stack of cards" icon marking the current dealer —
+// clearer at a glance than a single playing-card emoji.
+function dealerIcon() {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 40 40");
+  svg.setAttribute("class", "dealer-icon");
+  const g = document.createElementNS(ns, "g");
+  g.setAttribute("transform", "translate(20,20)");
+  const card = (x, y, rot) => {
+    const r = document.createElementNS(ns, "rect");
+    r.setAttribute("x", x);
+    r.setAttribute("y", y);
+    r.setAttribute("width", 16);
+    r.setAttribute("height", 20);
+    r.setAttribute("rx", 2.5);
+    r.setAttribute("fill", "#fffdf6");
+    r.setAttribute("stroke", "#3a2b22");
+    r.setAttribute("stroke-width", 1.4);
+    r.setAttribute("transform", `rotate(${rot})`);
+    return r;
+  };
+  g.appendChild(card(-11, -9, -14));
+  g.appendChild(card(-8, -10, 0));
+  g.appendChild(card(-5, -9, 14));
+  svg.appendChild(g);
+  return svg;
 }
 
 // Four small dots per player, one per pawn: hollow = still in base (not in
