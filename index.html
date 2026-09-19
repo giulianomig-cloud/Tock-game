@@ -2611,7 +2611,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 10";
+const APP_VERSION = "2026-09-19 build 11";
 
 let myColor = null;
 let myRoomId = null;
@@ -2680,7 +2680,8 @@ function renderLobby() {
       nameInput,
       colorRow,
       el("p", { class: "muted teams-hint" },
-        "Squadre: 🔴 Rosso + 🟡 Giallo (basi opposte) contro 🟢 Verde + 🔵 Blu (basi opposte)."),
+        "Squadre: ", swatchDot("red"), "Rosso + ", swatchDot("yellow"), "Giallo (basi opposte) contro ",
+        swatchDot("green"), "Verde + ", swatchDot("blue"), "Blu (basi opposte)."),
       el("button", { id: "join-btn", class: "primary", onclick: joinRoom }, "Entra nella stanza"),
       el("button", { class: "sound-test-btn", onclick: testSound }, "🔊 Test suono"),
       homeScreenHint()
@@ -2704,6 +2705,14 @@ function colorLabel(c) {
 }
 function colorEmoji(c) {
   return { red: "🔴", green: "🟢", yellow: "🟡", blue: "🔵" }[c];
+}
+
+// A small colored circle matching the game's own palette exactly — used
+// instead of a 🔴🟢🟡🔵 emoji wherever a color needs to be shown inline,
+// since emoji circles have a fixed color baked in by the platform and
+// never quite match our custom hex values.
+function swatchDot(color) {
+  return el("span", { class: "swatch swatch-" + color, style: "margin: 0 4px -2px 2px;" });
 }
 
 // Prefer the name the player chose when joining; fall back to the plain
@@ -2783,7 +2792,7 @@ function renderGameShell() {
       { class: "game-shell" },
       el("div", { class: "top-bar" },
         el("span", {}, "Stanza: " + myRoomId),
-        el("span", {}, "Sei: " + colorEmoji(myColor) + " " + myName + " (" + colorLabel(myColor) + ")" +
+        el("span", {}, "Sei: ", swatchDot(myColor), myName + " (" + colorLabel(myColor) + ")" +
           " · squadra " + TEAM_LABEL[TEAM_OF[myColor]]),
       ),
       el("div", { id: "conn-banner" }),
@@ -3042,10 +3051,10 @@ function renderExchangeControls(state) {
       el("p", {}, `Scambio alla cieca: scegli una carta da dare al tuo compagno (${playerName(state, partner)}).`),
       el("p", { class: "muted" },
         doneColors.length > 0
-          ? `Hanno già scelto: ${doneColors.map((c) => colorEmoji(c) + playerName(state, c)).join(", ")}. `
+          ? [`Hanno già scelto: `, ...doneColors.flatMap((c, i) => [swatchDot(c), playerName(state, c) + (i < doneColors.length - 1 ? ", " : ". ")])]
           : "",
         waitingColors.length > 0
-          ? `In attesa di: ${waitingColors.map((c) => colorEmoji(c) + playerName(state, c)).join(", ")}.`
+          ? [`In attesa di: `, ...waitingColors.flatMap((c, i) => [swatchDot(c), playerName(state, c) + (i < waitingColors.length - 1 ? ", " : ".")])]
           : "Tutti pronti, avvio in corso..."
       ),
       already
@@ -3401,7 +3410,7 @@ function renderJackPicker(active, card) {
             class: "secondary" + (picked ? " selected" : ""),
             onclick: () => toggleJackPick(active, card, t),
           },
-          `${colorEmoji(t.color)} ${colorLabel(t.color)} #${t.pawnIndex + 1}`
+          swatchDot(t.color), `${colorLabel(t.color)} #${t.pawnIndex + 1}`
         );
       }),
       el("button", { class: "danger", onclick: () => { jackPicked = []; closePicker(); } }, "Annulla")
