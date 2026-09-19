@@ -128,11 +128,14 @@ button.danger:active {
 
 .top-bar {
   display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
+  gap: 10px;
+  font-size: 0.68rem;
   color: #d8c9a8;
   margin-bottom: 8px;
+  white-space: nowrap;
+  overflow-x: auto;
 }
+.top-bar span { flex-shrink: 0; }
 .sound-test-btn {
   display: block;
   margin: 0 0 8px;
@@ -145,7 +148,13 @@ button.danger:active {
   cursor: pointer;
 }
 
-#board-wrap { margin-bottom: 10px; }
+#board-wrap {
+  margin-bottom: 10px;
+  padding: 9px;
+  border-radius: 18px;
+  background: #6b4a2a;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+}
 
 .turn-line {
   display: flex;
@@ -1989,9 +1998,8 @@ function buildBoardSVG(containerEl, board) {
   svg.style.width = "100%";
   svg.style.height = "auto";
   svg.style.display = "block";
-  svg.style.borderRadius = "14px";
-  svg.style.border = "9px solid #6b4a2a";
-  svg.style.boxShadow = "0 8px 22px rgba(0,0,0,0.5), inset 0 0 0 2px #3d2a17, inset 0 0 8px 2px rgba(0,0,0,0.35)";
+  svg.style.border = "2px solid #3d2a17";
+  svg.style.boxShadow = "inset 0 0 8px 2px rgba(0,0,0,0.35)";
 
   // ---- defs: gradients for background, bases, cells ----
   const defs = ns_el("defs", {});
@@ -2603,7 +2611,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 8";
+const APP_VERSION = "2026-09-19 build 9";
 
 let myColor = null;
 let myRoomId = null;
