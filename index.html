@@ -1756,7 +1756,13 @@ function posLabel(color, pos) {
 }
 
 function applyMove(state, color, card, move) {
-  const hand = state.hands[color];
+  // The card always comes out of the CURRENT TURN's own hand — not
+  // necessarily `color`'s hand. Once a player's own 4 pawns are all home,
+  // they spend their turn playing a card from their OWN hand to move
+  // their partner's pawns instead (see activeColorFor); `color` here is
+  // whichever pawns actually move, while the card itself is state.turnColor's.
+  const handOwner = state.turnColor && state.hands[state.turnColor] ? state.turnColor : color;
+  const hand = state.hands[handOwner];
   const ci = hand.indexOf(card);
   if (ci !== -1) hand.splice(ci, 1);
 
@@ -2656,7 +2662,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 12";
+const APP_VERSION = "2026-09-19 build 13";
 
 let myColor = null;
 let myRoomId = null;
@@ -3325,8 +3331,11 @@ async function onCardClick(card) {
   if (options.length === 0) {
     if (!confirm(`"${cardLabel(card)}" non ha mosse legali ora: la bruci e passi il turno?`)) return;
     await runUpdate((state) => {
-      const a = activeColorFor(state, myColor);
-      burnOneCard(state, a, card);
+      // Burn from the current turn's OWN hand (same fix as applyMove — see
+      // its comment). Using `active` here was the bug: when a player's
+      // pawns are all home and they're playing a partner's turn, the card
+      // never actually left their hand, so it kept reappearing/blocking.
+      burnOneCard(state, state.turnColor, card);
       advanceTurn(state);
     });
     return;
