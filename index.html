@@ -1294,10 +1294,31 @@ function pawnsInBase(state, color) {
     .filter((i) => i !== -1);
 }
 
-function stepsFromOwnBase(color, pos) {
+function stepsFromOwnBase(color, pos, lapped) {
   const base = BOARD.baseIndex[color];
   if (pos >= 1000) return null;
+  // A pawn sitting exactly on its own base cell is ambiguous by position
+  // alone: it's either freshly entered (0 steps travelled, needs an almost
+  // full lap to reach home) or it just completed a full forward lap and
+  // landed back on base (already at 64 steps, ready to turn into home on
+  // the very next move). `lapped` — read from state.lapped, set true only
+  // when a FORWARD move actually lands a pawn on its own base — resolves
+  // the ambiguity. See hasLapped/setLapped.
+  if (pos === base && lapped) return 64;
   return (pos - base + 64) % 64;
+}
+
+// Has this pawn, at some earlier point, completed a full forward lap and
+// come to rest exactly on its own base cell? Only meaningful while the
+// pawn is actually sitting there (pos === own base); otherwise irrelevant.
+function hasLapped(state, color, pawnIndex) {
+  return !!(state.lapped && state.lapped[color] && state.lapped[color][pawnIndex]);
+}
+
+function setLapped(state, color, pawnIndex, value) {
+  if (!state.lapped) state.lapped = {};
+  if (!state.lapped[color]) state.lapped[color] = [false, false, false, false];
+  state.lapped[color][pawnIndex] = !!value;
 }
 
 // Pure wraparound on the shared 64-cell loop, ignoring anyone's home
@@ -1320,7 +1341,7 @@ function pathForwardLoopOnly(pos, n) {
 // home stretch if the pawn is already there. Returns null on overshoot
 // past the last home cell (in that case pathForwardLoopOnly is still a
 // valid alternative — see movesForValue).
-function pathForward(color, pos, n) {
+function pathForward(color, pos, n, lapped) {
   const steps = [];
   const base = BOARD.baseIndex[color];
   if (pos >= 1000) {
@@ -1330,7 +1351,7 @@ function pathForward(color, pos, n) {
     for (let i = curHomeIdx + 1; i <= nextIdx; i++) steps.push(1000 + i);
     return steps;
   }
-  const already = stepsFromOwnBase(color, pos);
+  const already = stepsFromOwnBase(color, pos, lapped);
   for (let i = 1; i <= n; i++) {
     const travelled = already + i;
     if (travelled > 64) {
@@ -1419,7 +1440,7 @@ function movesForValue(state, color, value) {
           options.push({ type: "move", pawnIndex, path });
         }
       };
-      const homePath = pathForward(color, pos, value);
+      const homePath = pathForward(color, pos, value, hasLapped(state, color, pawnIndex));
       addIfLegal(homePath);
       if (pos < 1000) {
         const loopPath = pathForwardLoopOnly(pos, value);
@@ -1489,7 +1510,9 @@ function legalMovesForCard(state, color, card) {
 function protectedPawnIndex(state, color) {
   const baseIdx = BOARD.baseIndex[color];
   const idx = state.pawns[color].indexOf(baseIdx);
-  return idx; // -1 if none on base
+  if (idx === -1) return -1;
+  if (hasLapped(state, color, idx)) return -1; // already completed a lap: not "just entered" anymore
+  return idx;
 }
 
 function isPawnProtected(state, color, pawnIndex) {
@@ -1516,6 +1539,10 @@ function applyJackSwap(state, a, b) {
   }
   state.pawns[a.color][a.pawnIndex] = posB;
   state.pawns[b.color][b.pawnIndex] = posA;
+  // a Jack swap is a teleport, not a completed forward lap — reset the
+  // ambiguous "sitting on own base" flag to the safe default either way.
+  setLapped(state, a.color, a.pawnIndex, false);
+  setLapped(state, b.color, b.pawnIndex, false);
   state.log.push(`scambio (Jack) tra ${cn(a.color)}#${a.pawnIndex + 1} (${posLabel(a.color, posA)}→${posLabel(a.color, posB)}) e ${cn(b.color)}#${b.pawnIndex + 1} (${posLabel(b.color, posB)}→${posLabel(b.color, posA)}).`);
   // recorded so every client can flash/highlight the swap on the board
   state.lastSwap = {
@@ -1539,8 +1566,8 @@ function applyJackSwap(state, a, b) {
 // and keep going, using its full allotted steps to the very end — it
 // doesn't stop the moment it captures. Blocked entirely by an own pawn, a
 // protected pawn, or an occupied home cell anywhere on the path.
-function sevenSinglePawnPath(state, color, pos, steps, allowEarlyCapture) {
-  const full = pathForward(color, pos, steps);
+function sevenSinglePawnPath(state, color, pos, steps, allowEarlyCapture, lapped) {
+  const full = pathForward(color, pos, steps, lapped);
   if (!full) return null;
   for (let i = 0; i < full.length; i++) {
     const cell = full[i];
@@ -1653,7 +1680,7 @@ function sevenValidateDistribution(state, color, distribution) {
     for (const { pawnIndex, steps } of perm) {
       const pos = scratch[color][pawnIndex];
       if (pos === undefined || pos === -1) { ok = false; break; }
-      const path = sevenSinglePawnPath({ pawns: scratch }, color, pos, steps, true);
+      const path = sevenSinglePawnPath({ pawns: scratch }, color, pos, steps, true, hasLapped(state, color, pawnIndex));
       if (!path) { ok = false; break; }
       landSevenPortion(scratch, color, pawnIndex, path);
       result[pawnIndex] = path;
@@ -1687,6 +1714,7 @@ function applySevenDistribution(state, color, distribution) {
       }
     }
     state.pawns[color][pawnIndex] = dest;
+    setLapped(state, color, pawnIndex, dest < 1000 && dest === BOARD.baseIndex[color]);
     moves.push(`#${pawnIndex + 1} ${posLabel(color, oldPos)}→${posLabel(color, dest)}`);
   }
   state.log.push(`${cn(color)} gioca il 7 (${moves.join("; ")}).`);
@@ -1705,6 +1733,7 @@ function recordCapture(state, occ, atPos, byColor) {
     by: byColor || null,
   };
   state.pawns[occ.color][occ.pawnIndex] = -1;
+  setLapped(state, occ.color, occ.pawnIndex, false);
 }
 
 function anyLegalMove(state, color) {
@@ -1739,12 +1768,14 @@ function applyMove(state, color, card, move) {
       state.log.push(`${cn(occ.color)} mangiata sulla base da ${cn(color)} che entra.`);
     }
     state.pawns[color][move.pawnIndex] = baseIdx;
+    setLapped(state, color, move.pawnIndex, false); // fresh entry, hasn't lapped
     state.log.push(`${cn(color)} #${move.pawnIndex + 1} entra in gioco con ${cardLog(card)} (sulla base).`);
     return;
   }
 
   if (move.type === "move") {
     const oldPos = state.pawns[color][move.pawnIndex];
+    const wasLapped = hasLapped(state, color, move.pawnIndex);
     const dest = move.path[move.path.length - 1];
     if (dest < 1000) {
       const occ = occupantAt(state, dest);
@@ -1754,6 +1785,16 @@ function applyMove(state, color, card, move) {
       }
     }
     state.pawns[color][move.pawnIndex] = dest;
+    // Landing exactly back on one's own base cell only means "completed a
+    // full forward lap, ready to turn into home next" when this move was a
+    // FORWARD one (the "4" card moves backward and can coincidentally land
+    // on base too, but that's not a completed lap).
+    {
+      const allInNow = allPawnsOnBoard(state, color);
+      const cardValue = moveValueOf(card, allInNow);
+      const movedForward = cardValue === null || cardValue > 0; // seven/etc fall elsewhere; move-type cards are never null here
+      setLapped(state, color, move.pawnIndex, dest < 1000 && dest === BOARD.baseIndex[color] && movedForward);
+    }
     state.log.push(`${cn(color)} #${move.pawnIndex + 1} muove con ${cardLog(card)}: ${posLabel(color, oldPos)} → ${posLabel(color, dest)}.`);
     // if the path swung past this pawn's own base without turning into
     // its home stretch, say so explicitly — and be precise about WHY:
@@ -1763,9 +1804,9 @@ function applyMove(state, color, card, move) {
     const baseIdx = BOARD.baseIndex[color];
     if (dest < 1000 && dest !== baseIdx && move.path.includes(baseIdx)) {
       const steps = move.path.length;
-      const stepsBefore = stepsFromOwnBase(color, oldPos);
+      const stepsBefore = stepsFromOwnBase(color, oldPos, wasLapped);
       const distanceToBase = (64 - stepsBefore) % 64; // how many steps to reach base itself
-      const homePath = pathForward(color, oldPos, steps);
+      const homePath = pathForward(color, oldPos, steps, wasLapped);
       let reason;
       if (!homePath) {
         reason = `il numero (${steps}) non corrisponde a nessuna delle 4 caselle-casa da questa posizione (a ${distanceToBase} passi dalla base).`;
@@ -2456,10 +2497,14 @@ function animateSwapArc(el, fromXY, toXY, genToken) {
 function pathForAnimation(color, oldPos, newPos) {
   if (oldPos === -1 || newPos === -1 || oldPos === newPos) return null;
   if (typeof pathForward !== "function") return null; // engine.js not loaded (shouldn't happen)
-  // forward, possibly turning into home
-  for (let n = 1; n <= 13; n++) {
-    const p = pathForward(color, oldPos, n);
-    if (p && p[p.length - 1] === newPos) return p;
+  // forward, possibly turning into home (try both "just entered" and
+  // "completed a lap" interpretations of a pawn sitting on its own base —
+  // this is a purely cosmetic reconstruction, so trying both is cheap)
+  for (const lapped of [false, true]) {
+    for (let n = 1; n <= 13; n++) {
+      const p = pathForward(color, oldPos, n, lapped);
+      if (p && p[p.length - 1] === newPos) return p;
+    }
   }
   // forward, staying on the loop (wrap past one's own base without entering home)
   if (oldPos < 1000 && newPos < 1000 && typeof pathForwardLoopOnly === "function") {
@@ -2611,7 +2656,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "2026-09-19 build 11";
+const APP_VERSION = "2026-09-19 build 12";
 
 let myColor = null;
 let myRoomId = null;
