@@ -67,7 +67,43 @@ h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--ink); }
 }
 #room-input { text-transform: uppercase; }
 
-.color-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+/* Squadre raggruppate visivamente: le due pedine dello stesso team stanno
+   nello stesso riquadro tratteggiato, con un badge "VS" al centro tra i
+   due riquadri — così si capisce subito chi gioca con chi. */
+.teams-grid { display: flex; gap: 22px; margin-bottom: 16px; position: relative; }
+.team-group {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.3);
+  border: 1.5px dashed var(--panel-border);
+}
+.vs-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #4a3624, var(--ink));
+  border: 2px solid var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+  z-index: 2;
+}
+.vs-badge span {
+  color: var(--cream);
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
 
 .color-btn {
   padding: 14px;
@@ -2738,7 +2774,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "v1.26";
+const APP_VERSION = "v1.30";
 
 let myColor = null;
 let myRoomId = null;
@@ -2784,16 +2820,22 @@ function renderLobby() {
     value: myName || "",
   });
 
+  // Le pedine sono raggruppate per squadra (TEAM_OF) invece che in una
+  // semplice griglia 2x2, con un badge "VS" al centro tra i due gruppi.
+  const colorBtn = (c) =>
+    el("button", {
+      class: "color-btn color-" + c,
+      onclick: () => selectColor(c),
+      "data-color": c,
+    }, colorLabel(c));
+  const teamAColors = COLORS.filter((c) => TEAM_OF[c] === "A");
+  const teamBColors = COLORS.filter((c) => TEAM_OF[c] === "B");
   const colorRow = el(
     "div",
-    { class: "color-row" },
-    COLORS.map((c) =>
-      el("button", {
-        class: "color-btn color-" + c,
-        onclick: () => selectColor(c),
-        "data-color": c,
-      }, colorLabel(c))
-    )
+    { class: "teams-grid" },
+    el("div", { class: "team-group" }, teamAColors.map(colorBtn)),
+    el("div", { class: "team-group" }, teamBColors.map(colorBtn)),
+    el("div", { class: "vs-badge" }, el("span", {}, "VS"))
   );
 
   root.appendChild(
