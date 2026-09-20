@@ -408,17 +408,30 @@ button.secondary.selected {
   color: var(--ink);
 }
 
+.win-banner-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 20px;
+  animation: winFade 0.25s ease-out;
+}
 .win-banner {
   background: var(--gold-metallic);
   color: var(--ink);
   text-align: center;
-  padding: 22px 14px;
-  border-radius: 14px;
-  margin-bottom: 10px;
+  padding: 28px 22px;
+  border-radius: 16px;
   font-weight: 700;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.5);
   animation: winPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 340px;
+  width: 100%;
 }
+@keyframes winFade { from { opacity: 0; } to { opacity: 1; } }
 .win-trophy { font-size: 2.6rem; line-height: 1; margin-bottom: 4px; }
 .win-banner h2 { margin: 0 0 4px; font-size: 1.3rem; }
 .win-names { margin: 0; font-size: 0.95rem; opacity: 0.85; }
@@ -1573,11 +1586,11 @@ function applyJackSwap(state, a, b) {
 // and keep going, using its full allotted steps to the very end — it
 // doesn't stop the moment it captures. Blocked entirely by an own pawn, a
 // protected pawn, or an occupied home cell anywhere on the path.
-function sevenSinglePawnPath(state, color, pos, steps, allowEarlyCapture, lapped) {
-  const full = pathForward(color, pos, steps, lapped);
-  if (!full) return null;
-  for (let i = 0; i < full.length; i++) {
-    const cell = full[i];
+// Validates one candidate path (capture/blocking rules), or returns null.
+function sevenCheckPath(state, color, path, allowEarlyCapture) {
+  if (!path) return null;
+  for (let i = 0; i < path.length; i++) {
+    const cell = path[i];
     if (cell >= 1000) {
       const homeOcc = homeOccupant(state, color, cell - 1000);
       if (homeOcc !== -1) return null; // home cells are safe, can't land/pass
@@ -1587,12 +1600,28 @@ function sevenSinglePawnPath(state, color, pos, steps, allowEarlyCapture, lapped
     if (occ) {
       if (occ.color === color) return null; // own pawn always blocks
       if (isPawnProtected(state, occ.color, occ.pawnIndex)) return null; // never capturable
-      const isLastStep = i === full.length - 1;
+      const isLastStep = i === path.length - 1;
       if (!isLastStep && !allowEarlyCapture) return null; // blocked mid-path
       // otherwise: capture this one and keep going toward the full distance
     }
   }
-  return full;
+  return path;
+}
+
+function sevenSinglePawnPath(state, color, pos, steps, allowEarlyCapture, lapped) {
+  // Try turning into home first...
+  const homePath = sevenCheckPath(state, color, pathForward(color, pos, steps, lapped), allowEarlyCapture);
+  if (homePath) return homePath;
+  // ...but entering home is never mandatory (same rule as every other
+  // card): if that route is blocked (or doesn't even reach home), a pawn
+  // still on the loop can just keep going around instead. Without this
+  // fallback the 7 had no way to use the "vacate a home slot with part of
+  // the 7, keep the rest circling" workaround the rules describe.
+  if (pos < 1000) {
+    const loopPath = sevenCheckPath(state, color, pathForwardLoopOnly(pos, steps), allowEarlyCapture);
+    if (loopPath) return loopPath;
+  }
+  return null;
 }
 
 function clonePawns(pawns) {
@@ -2669,7 +2698,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "v1.21";
+const APP_VERSION = "v1.23";
 
 let myColor = null;
 let myRoomId = null;
@@ -3094,7 +3123,16 @@ function onStateChange(state) {
   renderHand(state);
   renderChat(state);
   renderLog(state);
-  if (state.phase === "finished") renderWinBanner(state);
+  if (state.phase === "finished") {
+    renderWinBanner(state);
+  } else {
+    // The banner is prepended straight into #app (outside the normal
+    // per-section re-render), so once the phase leaves "finished" — e.g.
+    // "Nuova partita" — nothing else ever takes it back down. Remove it
+    // explicitly here, every render, so it can never get stuck on screen.
+    const stale = $("#app").querySelector(".win-banner-backdrop");
+    if (stale) stale.remove();
+  }
 }
 
 function renderStartControls(state) {
@@ -3818,7 +3856,7 @@ function toggleLogCollapsed() {
 
 function renderWinBanner(state) {
   const root = $("#app");
-  if (root.querySelector(".win-banner")) return;
+  if (root.querySelector(".win-banner-backdrop")) return;
   const winners = COLORS.filter((c) => TEAM_OF[c] === state.winnerTeam);
   const names = winners.map((c) => playerName(state, c)).join(" & ");
   const banner = el(
@@ -3829,7 +3867,8 @@ function renderWinBanner(state) {
     el("p", { class: "win-names" }, names),
     el("button", { class: "primary", style: "margin-top:12px;width:auto;padding:10px 20px;", onclick: startNewGame }, "Nuova partita")
   );
-  root.prepend(banner);
+  const backdrop = el("div", { class: "win-banner-backdrop" }, banner);
+  root.prepend(backdrop);
   launchConfetti(winners);
 }
 
