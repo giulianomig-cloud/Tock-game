@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Tock</title>
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#3a2b1c" />
@@ -41,7 +41,7 @@ body {
   color: var(--ink);
 }
 
-#app { max-width: 480px; margin: 0 auto; padding: 12px; min-height: 100vh; }
+#app { max-width: 480px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 12px 12px; min-height: 100vh; }
 
 h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--ink); }
 .sound-test-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
@@ -250,6 +250,17 @@ button.danger:active {
 .card-btn.suit-black { color: #16110c; }
 .card-btn:disabled { opacity: 0.4; cursor: default; }
 .card-btn.selected { background: var(--gold-metallic); }
+.card-btn.card-burning {
+  pointer-events: none;
+  animation: cardBurn 0.45s ease-in forwards;
+}
+@keyframes cardBurn {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  20% { transform: translateY(0) rotate(-6deg); }
+  40% { transform: translateY(0) rotate(6deg); }
+  60% { transform: translateY(0) rotate(-4deg); opacity: 0.85; }
+  100% { transform: translateY(-6px) scale(0.75) rotate(3deg); opacity: 0; }
+}
 
 .card-corner {
   position: absolute;
@@ -282,6 +293,11 @@ button.danger:active {
   background: var(--panel);
   padding: 4px;
   margin-bottom: 10px;
+  animation: pickerFadeIn 0.2s ease-out;
+}
+@keyframes pickerFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .picker-overlay .choice-box {
   max-height: 46vh;
@@ -308,8 +324,28 @@ button.secondary.selected {
 
 .teams-hint {
   margin-top: -6px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
+.team-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.team-plus { opacity: 0.55; margin: 0 1px; font-weight: 700; }
+.team-pill .swatch { margin: 0 !important; }
+.vs-label { font-size: 0.72rem; font-weight: 700; color: #a89873; text-transform: uppercase; letter-spacing: 0.05em; }
 
 .burn-hint {
   width: 100%;
@@ -2698,7 +2734,7 @@ function renderPawns(svg, board, pawns, lastSwap, lastCapture) {
 // Bumped by hand each time a new build is produced — shown in the lobby so
 // it's obvious at a glance whether you're on the latest version, instead
 // of guessing from a stale browser tab or cache.
-const APP_VERSION = "v1.23";
+const APP_VERSION = "v1.26";
 
 let myColor = null;
 let myRoomId = null;
@@ -2765,9 +2801,21 @@ function renderLobby() {
       roomInput,
       nameInput,
       colorRow,
-      el("p", { class: "muted teams-hint" },
-        "Squadre: ", swatchDot("red"), "Rosso + ", swatchDot("yellow"), "Giallo (basi opposte) contro ",
-        swatchDot("green"), "Verde + ", swatchDot("blue"), "Blu (basi opposte)."),
+      el(
+        "div",
+        { class: "teams-hint" },
+        el(
+          "div",
+          { class: "team-pill" },
+          swatchDot("red"), "Rosso", el("span", { class: "team-plus" }, "+"), swatchDot("yellow"), "Giallo"
+        ),
+        el("span", { class: "vs-label" }, "vs"),
+        el(
+          "div",
+          { class: "team-pill" },
+          swatchDot("green"), "Verde", el("span", { class: "team-plus" }, "+"), swatchDot("blue"), "Blu"
+        )
+      ),
       el("button", { id: "join-btn", class: "primary", onclick: joinRoom }, "Entra nella stanza"),
       el(
         "div",
@@ -3341,7 +3389,7 @@ function renderHand(state) {
   const isMyTurn = state.turnColor === myColor;
   const hand = state.hands[myColor] || [];
   hand.forEach((card) => {
-    const btn = buildCardButton(card, isMyTurn, () => onCardClick(card));
+    const btn = buildCardButton(card, isMyTurn, (e) => onCardClick(card, e));
     wrap.appendChild(btn);
   });
 }
@@ -3401,13 +3449,20 @@ function cardLabel(card) {
 // after picking among several pawns / a Jack target / a 7 split), or —
 // if it genuinely has no legal use — it is burned right away. Either way
 // the turn advances by exactly one card.
-async function onCardClick(card) {
+async function onCardClick(card, evt) {
   keepAudioAlive();
   const active = activeColorFor(currentState, myColor);
   const options = legalMovesForCard(currentState, active, card);
 
   if (options.length === 0) {
     if (!confirm(`"${cardLabel(card)}" non ha mosse legali ora: la bruci e passi il turno?`)) return;
+    // Piccola animazione di "bruciatura" sulla carta cliccata, prima che
+    // sparisca davvero dallo stato — invece di sparire di scatto.
+    const btn = evt && evt.currentTarget;
+    if (btn && btn.classList) {
+      btn.classList.add("card-burning");
+      await new Promise((resolve) => setTimeout(resolve, 380));
+    }
     await runUpdate((state) => {
       // Burn from the current turn's OWN hand (same fix as applyMove — see
       // its comment). Using `active` here was the bug: when a player's
